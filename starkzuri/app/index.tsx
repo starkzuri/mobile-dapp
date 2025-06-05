@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,172 +10,119 @@ import {
   SafeAreaView,
   StatusBar,
 } from "react-native";
-import { styles } from "./styles/index";
+import styles from "../styles/index";
+import PostItem from "@/components/PostItem";
+import { useAppContext } from "@/providers/AppProvider";
+import usePaginationStore from "@/stores/usePaginationStore";
+
+type Post = {
+  postId: number;
+  caller: number;
+  content: string;
+  likes: number;
+  comments: number;
+  shares: number;
+  images: string;
+  zuri_points: string;
+  date_posted: number;
+};
 
 const StarkZuriHomepage = () => {
-  const [posts, setPosts] = useState([
-    {
-      id: 1,
-      user: {
-        name: "Sarah Chen",
-        username: "@sarahc",
-        avatar:
-          "https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=150&h=150&fit=crop&crop=face",
-        verified: true,
-      },
-      content:
-        "Just launched my new photography series! The response has been incredible 📸✨",
-      image:
-        "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=400&fit=crop",
-      timestamp: "2h",
-      likes: 234,
-      comments: 18,
-      shares: 12,
-      rewards: 45.6,
-      liked: false,
-    },
-    {
-      id: 2,
-      user: {
-        name: "Marcus Rodriguez",
-        username: "@marcusr",
-        avatar:
-          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
-        verified: false,
-      },
-      content:
-        "Building in public has been such a game changer for my startup journey. Here's what I learned this week about user feedback and iteration cycles.",
-      timestamp: "4h",
-      likes: 89,
-      comments: 7,
-      shares: 23,
-      rewards: 12.3,
-      liked: true,
-    },
-    {
-      id: 3,
-      user: {
-        name: "Elena Vasquez",
-        username: "@elenadesigns",
-        avatar:
-          "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
-        verified: true,
-      },
-      content:
-        "New UI design for a fintech app! Clean, modern, and user-friendly. What do you think? 💙",
-      image:
-        "https://images.unsplash.com/photo-1551650975-87deedd944c3?w=600&h=400&fit=crop",
-      timestamp: "6h",
-      likes: 156,
-      comments: 24,
-      shares: 8,
-      rewards: 28.9,
-      liked: false,
-    },
-  ]);
+  const { contract } = useAppContext();
+
+  const {
+    page,
+    totalPages,
+    hasError,
+    loading,
+    setLoading,
+    setHasError,
+    initializePagination,
+    decrementPage,
+  } = usePaginationStore();
+
+  const [posts, setPosts] = useState<Post[]>([]);
+
+  const fetchPosts = async () => {
+    console.log("fetching", page, loading);
+    if (page < 1) return;
+
+    try {
+      setLoading(true);
+      console.log("fetching");
+      const myCall = contract.populate("view_posts", [page]);
+
+      const response = await contract["view_posts"](myCall.calldata, {
+        parseResponse: false,
+        parseRequest: false,
+      });
+
+      const newPosts = contract.callData.parse(
+        "view_posts",
+        response?.result ?? response
+      );
+
+      // Sort posts by date (newest first)
+      const sortedPosts = newPosts.sort((a, b) => {
+        const dateA = BigInt(a.date_posted);
+        const dateB = BigInt(b.date_posted);
+        return dateB > dateA ? 1 : -1;
+      });
+
+      setPosts((currentPosts) => {
+        // Remove any duplicates when combining old and new posts
+        const uniquePosts = [...currentPosts, ...sortedPosts].reduce(
+          (acc, current) => {
+            const x = acc.find((item) => item.postId === current.postId);
+            if (!x) {
+              return acc.concat([current]);
+            }
+            return acc;
+          },
+          []
+        );
+        return uniquePosts;
+      });
+
+      decrementPage();
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+      setHasError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (contract) {
+      initializePagination(contract);
+    }
+    // if (contract && address) {
+    //   view_user();
+    // }
+  }, [contract]);
+  // console.log(posts);
+
+  // Fetch initial posts when pagination is initialized
+  useEffect(() => {
+    if (page !== null && totalPages !== null) {
+      fetchPosts();
+    }
+  }, [totalPages, contract]);
 
   const handleLike = (postId) => {
     setPosts(
       posts.map((post) =>
-        post.id === postId
+        post.postId === postId
           ? {
               ...post,
-              liked: !post.liked,
-              likes: post.liked ? post.likes - 1 : post.likes + 1,
+              // liked: !post.liked,
+              likes: post.likes ? post.likes - 1 : post.likes + 1,
             }
           : post
       )
     );
   };
-
-  const PostItem = ({ post }) => (
-    <View style={styles.postContainer}>
-      {/* Post Header */}
-      <View style={styles.postHeader}>
-        <View style={styles.userInfo}>
-          <Image source={{ uri: post.user.avatar }} style={styles.avatar} />
-          <View style={styles.userDetails}>
-            <View style={styles.nameContainer}>
-              <Text style={styles.userName}>{post.user.name}</Text>
-              {post.user.verified && (
-                <View style={styles.verifiedBadge}>
-                  <Text style={styles.verifiedText}>✓</Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.userHandle}>
-              {post.user.username} • {post.timestamp}
-            </Text>
-          </View>
-        </View>
-        <TouchableOpacity style={styles.moreButton}>
-          <Text style={styles.moreText}>⋯</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Post Content */}
-      <Text style={styles.postContent}>{post.content}</Text>
-      {post.image && (
-        <Image source={{ uri: post.image }} style={styles.postImage} />
-      )}
-
-      {/* Rewards Section */}
-      <View style={styles.rewardsContainer}>
-        <View style={styles.rewardsHeader}>
-          <View style={styles.rewardsLabel}>
-            <Text style={styles.coinIcon}>🪙</Text>
-            <Text style={styles.rewardsText}>Creator Rewards</Text>
-          </View>
-          <View style={styles.rewardsAmount}>
-            <Text style={styles.trendingIcon}>📈</Text>
-            <Text style={styles.rewardsValue}>${post.rewards}</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Action Buttons */}
-      <View style={styles.actionsContainer}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => handleLike(post.id)}
-        >
-          <Text
-            style={[
-              styles.actionIcon,
-              { color: post.liked ? "#ff4757" : "#8e8e93" },
-            ]}
-          >
-            {post.liked ? "❤️" : "🤍"}
-          </Text>
-          <Text style={styles.actionText}>{post.likes}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionIcon}>💬</Text>
-          <Text style={styles.actionText}>{post.comments}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionIcon}>🔄</Text>
-          <Text style={styles.actionText}>{post.shares}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionIcon}>📤</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Call to Action Buttons */}
-      <View style={styles.ctaContainer}>
-        <TouchableOpacity style={styles.supportButton}>
-          <Text style={styles.supportButtonText}>💎 Support Creator</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.followButton}>
-          <Text style={styles.followButtonText}>+ Follow</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -222,8 +169,9 @@ const StarkZuriHomepage = () => {
 
       {/* Posts Feed */}
       <ScrollView style={styles.feed} showsVerticalScrollIndicator={false}>
+        {/* <PostItem handleLike={handleLike} /> */}
         {posts.map((post) => (
-          <PostItem key={post.id} post={post} />
+          <PostItem key={post.postId} handleLike={handleLike} post={post} />
         ))}
       </ScrollView>
     </SafeAreaView>

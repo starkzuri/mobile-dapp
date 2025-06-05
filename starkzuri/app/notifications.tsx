@@ -9,7 +9,7 @@ import {
   SafeAreaView,
   StatusBar,
 } from "react-native";
-import { styles } from "./styles/notifications";
+import styles from "../styles/notifications";
 
 const StarkZuriNotifications = () => {
   const [notifications, setNotifications] = useState([
