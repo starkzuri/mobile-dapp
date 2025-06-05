@@ -8,7 +8,9 @@ import {
   TextInput,
   StyleSheet,
   SafeAreaView,
+  ActivityIndicator,
   StatusBar,
+  FlatList,
 } from "react-native";
 import styles from "../styles/index";
 import PostItem from "@/components/PostItem";
@@ -24,11 +26,12 @@ type Post = {
   shares: number;
   images: string;
   zuri_points: string;
-  date_posted: number;
+  date_posted: any;
 };
 
 const StarkZuriHomepage = () => {
   const { contract } = useAppContext();
+  const [refreshing, setRefreshing] = useState(false);
 
   const {
     page,
@@ -110,6 +113,10 @@ const StarkZuriHomepage = () => {
     }
   }, [totalPages, contract]);
 
+  const reloadPosts = () => {
+    fetchPosts();
+  };
+
   const handleLike = (postId) => {
     setPosts(
       posts.map((post) =>
@@ -168,12 +175,47 @@ const StarkZuriHomepage = () => {
       </View>
 
       {/* Posts Feed */}
-      <ScrollView style={styles.feed} showsVerticalScrollIndicator={false}>
-        {/* <PostItem handleLike={handleLike} /> */}
+      {/* <ScrollView style={styles.feed} showsVerticalScrollIndicator={false}>
+       
         {posts.map((post) => (
           <PostItem key={post.postId} handleLike={handleLike} post={post} />
         ))}
-      </ScrollView>
+      </ScrollView> */}
+
+      {/* <FlatList
+        data={posts}
+        keyExtractor={(item) => item?.postId.toString()}
+        renderItem={({ item }) => (
+          <PostItem handleLike={handleLike} post={item} />
+        )}
+        contentContainerStyle={styles.feed}
+        showsVerticalScrollIndicator={false}
+        onEndReached={fetchPosts}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={() =>
+          loading ? (
+            <View style={{ paddingVertical: 20 }}>
+              <ActivityIndicator size="large" color="#2196F3" />
+            </View>
+          ) : null
+        }
+      /> */}
+
+      <FlatList
+        data={posts}
+        keyExtractor={(item) => item.postId.toString()}
+        renderItem={({ item }) => (
+          <PostItem post={item} handleLike={handleLike} />
+        )}
+        refreshing={refreshing}
+        onRefresh={reloadPosts}
+        onEndReached={fetchPosts} // called when scroll nears the bottom
+        onEndReachedThreshold={0.5} // 50% from the bottom
+        ListFooterComponent={
+          loading ? <ActivityIndicator size="large" color="#2196F3" /> : null
+        }
+        showsVerticalScrollIndicator={false}
+      />
     </SafeAreaView>
   );
 };

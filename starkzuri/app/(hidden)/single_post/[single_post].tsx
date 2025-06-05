@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,11 +12,17 @@ import {
   Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons"; // or react-native-vector-icons
+import { useLocalSearchParams } from "expo-router";
+import Markdown from "react-native-markdown-display";
+import PostHeader from "@/components/PostHeader";
+import PostFooter from "@/components/PostFooter";
+import { useAppContext } from "@/providers/AppProvider";
+import CommentComponent from "@/components/CommentComponent";
 
 const { width } = Dimensions.get("window");
 
 const samplePost = {
-  id: "1",
+  id: "0",
   caller: 0x1234567890abcdef1234567890abcdef12345678n,
   content:
     "Just launched my new NFT collection! 🎨 The intersection of art and technology never ceases to amaze me. Each piece tells a story about our digital future. What do you think about the role of AI in creative processes? #NFT #DigitalArt #Web3",
@@ -63,15 +69,98 @@ const sampleComments = [
   },
 ];
 
+type Comment = {
+  postId: number;
+  commentId: number;
+  caller: number;
+  content: string;
+  likes: number;
+  replies: number;
+  time_commented: number;
+  zuri_points: number;
+};
+
+type Post = {
+  postId: number;
+  caller: number;
+  content: string;
+  likes: number;
+  comments: number;
+  shares: number;
+  images: string;
+  zuri_points: string;
+  date_posted: number;
+};
+
 const SinglePostPage = () => {
   const [liked, setLiked] = useState(samplePost.liked);
   const [likeCount, setLikeCount] = useState(samplePost.likes);
   const [comments, setComments] = useState(sampleComments);
   const [newComment, setNewComment] = useState("");
+  const { single_post } = useLocalSearchParams();
+  const { contract } = useAppContext();
+  const [loading, setLoading] = useState(false);
+  const [posts, setPosts] = useState<Post>({
+    postId: 0,
+    caller: 0,
+    content: "",
+    likes: 0,
+    comments: 0,
+    shares: 0,
+    images: "",
+    zuri_points: "",
+    date_posted: 0,
+  });
+  const [commentList, setCommentList] = useState<Comment[]>([]);
 
   const handleLike = () => {
     setLiked(!liked);
     setLikeCount((prev) => (liked ? prev - 1 : prev + 1));
+  };
+
+  const view_post = () => {
+    // console.log(id);
+    const myCall = contract.populate("view_post", [single_post]);
+    setLoading(true);
+    contract["view_post"](myCall.calldata, {
+      parseResponse: false,
+      parseRequest: false,
+    })
+      .then((res) => {
+        let val = contract.callData.parse("view_post", res?.result ?? res);
+        // console.log(val);
+        setPosts(val);
+        // console.log(val);
+      })
+      .catch((err) => {
+        console.error("Error: ", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
+
+  // viewing comments
+  const view_comments = () => {
+    // console.log(id);
+    const myCall = contract.populate("view_comments", [single_post]);
+    setLoading(true);
+    contract["view_comments"](myCall.calldata, {
+      parseResponse: false,
+      parseRequest: false,
+    })
+      .then((res) => {
+        let val = contract.callData.parse("view_comments", res?.result ?? res);
+        console.log(val);
+        setCommentList(val.reverse());
+        console.log(val);
+      })
+      .catch((err) => {
+        console.error("Error: ", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   };
 
   const handleCommentLike = (commentId) => {
@@ -117,46 +206,17 @@ const SinglePostPage = () => {
     return `${hours}h ago`;
   };
 
-  const images = samplePost.images.split(",");
+  useEffect(() => {
+    if (contract) {
+      view_post();
+    }
+  }, [contract, single_post]);
 
-  const renderComment = ({ item }) => (
-    <View style={styles.commentContainer}>
-      <View style={styles.commentAvatar}>
-        <Text style={styles.commentAvatarText}>
-          {item.authorName.substring(0, 2).toUpperCase()}
-        </Text>
-      </View>
-      <View style={styles.commentContent}>
-        <View style={styles.commentBubble}>
-          <View style={styles.commentHeader}>
-            <Text style={styles.commentAuthor}>{item.authorName}</Text>
-            <Text style={styles.commentTime}>{item.timestamp}</Text>
-          </View>
-          <Text style={styles.commentText}>{item.content}</Text>
-        </View>
-        <View style={styles.commentActions}>
-          <TouchableOpacity
-            style={styles.commentAction}
-            onPress={() => handleCommentLike(item.id)}
-          >
-            <Ionicons
-              name={item.liked ? "heart" : "heart-outline"}
-              size={16}
-              color={item.liked ? "#ef4444" : "#9ca3af"}
-            />
-            <Text
-              style={[styles.commentActionText, item.liked && styles.likedText]}
-            >
-              {item.likes}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.commentAction}>
-            <Text style={styles.commentActionText}>Reply</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  );
+  useEffect(() => {
+    if (contract) {
+      view_comments();
+    }
+  }, [contract, single_post]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -172,38 +232,47 @@ const SinglePostPage = () => {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* User Info */}
-        <View style={styles.userInfo}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {formatAddress(samplePost.caller).substring(2, 4).toUpperCase()}
-            </Text>
-          </View>
-          <View style={styles.userDetails}>
-            <View style={styles.userNameRow}>
-              <Text style={styles.userName}>
-                {formatAddress(samplePost.caller)}
-              </Text>
-              <View style={styles.zuriPointsBadge}>
-                <Text style={styles.zuriPointsText}>
-                  {samplePost.zuri_points} ZP
-                </Text>
-              </View>
-            </View>
-            <Text style={styles.postTime}>
-              {formatTimestamp(samplePost.date_posted)}
-            </Text>
-          </View>
-        </View>
+
+        <PostHeader post={posts} />
 
         {/* Post Content */}
         <View style={styles.postContent}>
-          <Text style={styles.postText}>{samplePost.content}</Text>
+          <Text style={styles.postText}>{posts.content}</Text>
+          {/* <Markdown
+            style={{
+              body: {
+                color: "#333",
+                fontSize: 16,
+              },
+              heading1: {
+                fontSize: 24,
+                fontWeight: "bold",
+                color: "#222",
+              },
+              strong: {
+                color: "red",
+              },
+              em: {
+                fontStyle: "italic",
+                color: "blue",
+              },
+              list_item: {
+                color: "green",
+              },
+              link: {
+                color: "#1e90ff",
+                textDecorationLine: "underline",
+              },
+            }}
+          >
+            {posts?.content}
+          </Markdown> */}
         </View>
 
         {/* Images */}
         <View style={styles.imagesContainer}>
           <View style={styles.imageGrid}>
-            {images.map((image, index) => (
+            {posts?.images.split(",").map((image, index) => (
               <Image
                 key={index}
                 source={{ uri: image.trim() }}
@@ -214,42 +283,17 @@ const SinglePostPage = () => {
           </View>
         </View>
 
-        {/* Engagement Stats */}
-        <View style={styles.engagementStats}>
-          <Text style={styles.statText}>{likeCount} likes</Text>
-          <Text style={styles.statText}>{comments.length} comments</Text>
-          <Text style={styles.statText}>{samplePost.shares} shares</Text>
-        </View>
+        <PostFooter post={posts} handleLike={handleLike} />
 
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
-            <Ionicons
-              name={liked ? "heart" : "heart-outline"}
-              size={20}
-              color={liked ? "#ef4444" : "#9ca3af"}
-            />
-            <Text style={[styles.actionButtonText, liked && styles.likedText]}>
-              Like
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="chatbubble-outline" size={20} color="#9ca3af" />
-            <Text style={styles.actionButtonText}>Comment</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="share-outline" size={20} color="#9ca3af" />
-            <Text style={styles.actionButtonText}>Share</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Engagement Stats */}
 
         {/* Comments Section */}
         <View style={styles.commentsSection}>
           <Text style={styles.commentsTitle}>Comments</Text>
           <FlatList
-            data={comments}
-            renderItem={renderComment}
-            keyExtractor={(item) => item.id}
+            data={commentList}
+            renderItem={({ item }) => <CommentComponent comment={item} />}
+            keyExtractor={(item, index) => index.toString()}
             scrollEnabled={false}
             showsVerticalScrollIndicator={false}
           />
@@ -286,7 +330,7 @@ const SinglePostPage = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#111827",
+    backgroundColor: "#1a1a1a",
   },
   header: {
     flexDirection: "row",

@@ -1,4 +1,4 @@
-import { Tabs } from "expo-router";
+import { Tabs, Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { AppProvider } from "@/providers/AppProvider";
 
@@ -46,6 +46,10 @@ export default function Layout() {
         <Tabs.Screen name="reels" options={{ title: "Reels" }} />
         <Tabs.Screen name="profile" options={{ title: "Profile" }} />
         <Tabs.Screen name="more" options={{ title: "More" }} />
+        <Tabs.Screen
+          name="(hidden)/single_post/[single_post]"
+          options={{ tabBarButton: () => null }}
+        />
       </Tabs>
     </AppProvider>
   );
