@@ -11,7 +11,7 @@ import {
   Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import styles from "../styles/profile";
+import styles from "../../styles/profile";
 
 const { width } = Dimensions.get("window");
 

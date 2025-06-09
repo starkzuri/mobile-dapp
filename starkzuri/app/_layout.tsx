@@ -1,56 +1,54 @@
-import { Tabs, Stack } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+// import { Stack } from "expo-router";
+// import { AppProvider } from "@/providers/AppProvider";
+// import { StatusBar } from "expo-status-bar";
+// import { useFonts } from "expo-font";
+
+// export default function RootLayout() {
+//   const [loaded] = useFonts({
+//     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
+//   });
+
+//   if (!loaded) return null;
+
+//   return (
+//     <AppProvider>
+//       <Stack>
+//         {/* Do NOT include `(tabs)` here as a screen */}
+//         {/* Instead, modal screens go here */}
+//         <Stack.Screen
+//           name="modals/single_post"
+//           options={{
+//             presentation: "modal",
+//             headerShown: false,
+//           }}
+//         />
+//         <Stack.Screen
+//           name="+not-found"
+//           options={{
+//             headerShown: false,
+//           }}
+//         />
+//       </Stack>
+//       <StatusBar style="auto" />
+//     </AppProvider>
+//   );
+// }
+
+import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { AppProvider } from "@/providers/AppProvider";
 
-export default function Layout() {
+export default function RootLayout() {
   return (
     <AppProvider>
-      <Tabs
-        initialRouteName="index" // optional but recommended
-        screenOptions={({ route }) => ({
-          tabBarActiveTintColor: "#1f87fc",
-          tabBarInactiveTintColor: "#888",
-          tabBarStyle: {
-            backgroundColor: "#121212",
-            borderTopWidth: 0,
-            elevation: 0,
-            height: 60,
-            paddingBottom: 5,
-          },
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => {
-            let iconName = "";
-
-            if (route.name === "index") iconName = "home-outline";
-            else if (route.name === "notifications")
-              iconName = "notifications-outline";
-            else if (route.name === "reels") iconName = "play-circle-outline";
-            else if (route.name === "profile") iconName = "person-outline";
-            else if (route.name === "more")
-              iconName = "ellipsis-horizontal-outline";
-
-            return <Ionicons name={iconName} size={size} color={color} />;
-          },
-          tabBarLabelStyle: {
-            fontSize: 12,
-            fontWeight: "600",
-          },
-        })}
-      >
-        {/* Define tabs explicitly and in the order you want */}
-        <Tabs.Screen name="index" options={{ title: "Home" }} />
-        <Tabs.Screen
-          name="notifications"
-          options={{ title: "Notifications" }}
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="modals/single_post"
+          options={{ presentation: "modal" }}
         />
-        <Tabs.Screen name="reels" options={{ title: "Reels" }} />
-        <Tabs.Screen name="profile" options={{ title: "Profile" }} />
-        <Tabs.Screen name="more" options={{ title: "More" }} />
-        <Tabs.Screen
-          name="(hidden)/single_post/[single_post]"
-          options={{ tabBarButton: () => null }}
-        />
-      </Tabs>
+      </Stack>
+      <StatusBar style="light" />
     </AppProvider>
   );
 }

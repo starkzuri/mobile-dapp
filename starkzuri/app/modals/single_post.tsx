@@ -12,12 +12,14 @@ import {
   Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons"; // or react-native-vector-icons
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import Markdown from "react-native-markdown-display";
+import TurndownService from "turndown";
 import PostHeader from "@/components/PostHeader";
 import PostFooter from "@/components/PostFooter";
 import { useAppContext } from "@/providers/AppProvider";
 import CommentComponent from "@/components/CommentComponent";
+import { htmlToMarkdown } from "@/utils/AppUtils";
 
 const { width } = Dimensions.get("window");
 
@@ -98,7 +100,10 @@ const SinglePostPage = () => {
   const [comments, setComments] = useState(sampleComments);
   const [newComment, setNewComment] = useState("");
   const { single_post } = useLocalSearchParams();
+  const router = useRouter();
+  // console.log(single_post);
   const { contract } = useAppContext();
+  console.log(contract);
   const [loading, setLoading] = useState(false);
   const [posts, setPosts] = useState<Post>({
     postId: 0,
@@ -113,9 +118,28 @@ const SinglePostPage = () => {
   });
   const [commentList, setCommentList] = useState<Comment[]>([]);
 
+  // using the turndown service
+
+  function displayMarkdown(_html) {
+    const turnDownService = new TurndownService();
+    const html = _html;
+    const markdown = turnDownService.turndown(html);
+    // console.log(markdown)
+    return markdown;
+  }
+
+  const handleBack = () => {
+    if (router.canGoBack?.()) {
+      router.back();
+    } else {
+      router.replace("/"); // or wherever the safe fallback is
+    }
+  };
+
   const handleLike = () => {
     setLiked(!liked);
-    setLikeCount((prev) => (liked ? prev - 1 : prev + 1));
+
+    // setLikeCount((prev) => (liked ? prev - 1 : prev + 1));
   };
 
   const view_post = () => {
@@ -223,7 +247,7 @@ const SinglePostPage = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity style={styles.backButton}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#d1d5db" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Post</Text>
@@ -237,36 +261,16 @@ const SinglePostPage = () => {
 
         {/* Post Content */}
         <View style={styles.postContent}>
-          <Text style={styles.postText}>{posts.content}</Text>
-          {/* <Markdown
+          <Markdown
             style={{
-              body: {
-                color: "#333",
-                fontSize: 16,
-              },
-              heading1: {
-                fontSize: 24,
-                fontWeight: "bold",
-                color: "#222",
-              },
-              strong: {
-                color: "red",
-              },
-              em: {
-                fontStyle: "italic",
-                color: "blue",
-              },
-              list_item: {
-                color: "green",
-              },
-              link: {
-                color: "#1e90ff",
-                textDecorationLine: "underline",
-              },
+              body: { color: "white" },
+              heading1: { color: "white" },
+              bullet_list_icon: { color: "white" },
+              link: { color: "#1f87fc" },
             }}
           >
-            {posts?.content}
-          </Markdown> */}
+            {htmlToMarkdown(posts.content)}
+          </Markdown>
         </View>
 
         {/* Images */}

@@ -12,7 +12,7 @@ import {
   StatusBar,
   FlatList,
 } from "react-native";
-import styles from "../styles/index";
+import styles from "../../styles/index";
 import PostItem from "@/components/PostItem";
 import { useAppContext } from "@/providers/AppProvider";
 import usePaginationStore from "@/stores/usePaginationStore";

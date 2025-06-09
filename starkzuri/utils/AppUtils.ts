@@ -321,3 +321,34 @@ export function truncateAddress(
 
   return `${firstPart}...${lastPart}`;
 }
+
+export function htmlToMarkdown(html: string): string {
+  let markdown = html;
+
+  // Line breaks
+  markdown = markdown.replace(/<br\s*\/?>/gi, "\n");
+
+  // Bold text
+  markdown = markdown.replace(/<b>(.*?)<\/b>/gi, "**$1**");
+  markdown = markdown.replace(/<strong>(.*?)<\/strong>/gi, "**$1**");
+
+  // Italic text
+  markdown = markdown.replace(/<i>(.*?)<\/i>/gi, "*$1*");
+  markdown = markdown.replace(/<em>(.*?)<\/em>/gi, "*$1*");
+
+  // Links
+  markdown = markdown.replace(/<a\s+href="(.*?)">(.*?)<\/a>/gi, "[$2]($1)");
+
+  // List items
+  markdown = markdown.replace(/<li>(.*?)<\/li>/gi, "- $1");
+  markdown = markdown.replace(/<\/ul>|<\/ol>/gi, "");
+  markdown = markdown.replace(/<ul>|<ol>/gi, "\n");
+
+  // Remove all other tags
+  markdown = markdown.replace(/<[^>]+>/g, "");
+
+  // Clean up multiple line breaks
+  markdown = markdown.replace(/\n{3,}/g, "\n\n");
+
+  return markdown.trim();
+}

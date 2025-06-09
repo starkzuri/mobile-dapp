@@ -27,10 +27,20 @@ import PostFooter from "./PostFooter";
 
 const PostItem = ({ post, handleLike }) => (
   <Pressable
-    onPress={() => router.push(`/single_post/${post.postId}`)}
+    onPress={() =>
+      router.push({
+        pathname: "/modals/single_post",
+        params: { single_post: post?.postId.toString() },
+      })
+    }
     style={styles.postContainer}
   >
     {/* Post Header */}
+
+    {/*
+    onPress={() => router.push(`/single_post/${post.postId}`)}
+    style={styles.postContainer}
+    */}
 
     <PostHeader post={post} />
     <PostContent post={post} handleLike={handleLike} />

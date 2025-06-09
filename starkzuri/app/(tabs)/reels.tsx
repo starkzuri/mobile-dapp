@@ -49,6 +49,7 @@ type Reel = {
 // ];
 
 import { useAppContext } from "@/providers/AppProvider";
+import { useFocusEffect } from "expo-router";
 
 const ReelItem = ({ item, isVisible }) => {
   const videoRef = useRef(null);
@@ -60,6 +61,15 @@ const ReelItem = ({ item, isVisible }) => {
       videoRef.current?.pauseAsync();
     }
   }, [isVisible]);
+
+  useFocusEffect(() => {
+    return () => {
+      // pause the video when navigating away
+      if (videoRef.current) {
+        videoRef.current.pauseAsync();
+      }
+    };
+  });
 
   const video = { uri: item.video };
 
