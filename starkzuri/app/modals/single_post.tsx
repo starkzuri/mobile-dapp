@@ -103,7 +103,7 @@ const SinglePostPage = () => {
   const router = useRouter();
   // console.log(single_post);
   const { contract } = useAppContext();
-  console.log(contract);
+  // console.log(contract);
   const [loading, setLoading] = useState(false);
   const [posts, setPosts] = useState<Post>({
     postId: 0,

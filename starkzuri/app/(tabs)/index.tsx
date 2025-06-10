@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, use } from "react";
 import {
   View,
   Text,
@@ -10,12 +10,15 @@ import {
   SafeAreaView,
   ActivityIndicator,
   StatusBar,
+  Modal,
   FlatList,
 } from "react-native";
 import styles from "../../styles/index";
 import PostItem from "@/components/PostItem";
 import { useAppContext } from "@/providers/AppProvider";
 import usePaginationStore from "@/stores/usePaginationStore";
+import CreatePostComponent from "@/components/PostComponent";
+import PostContent from "@/components/PostContent";
 
 type Post = {
   postId: number;
@@ -32,6 +35,7 @@ type Post = {
 const StarkZuriHomepage = () => {
   const { contract } = useAppContext();
   const [refreshing, setRefreshing] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const {
     page,
@@ -166,40 +170,25 @@ const StarkZuriHomepage = () => {
           }}
           style={styles.userAvatar}
         />
-        <TouchableOpacity style={styles.createPostInput}>
+        <TouchableOpacity
+          onPress={() => setModalVisible(true)}
+          style={styles.createPostInput}
+        >
           <Text style={styles.createPostText}>What's happening?</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.createPostButton}>
           <Text style={styles.createPostButtonText}>+</Text>
         </TouchableOpacity>
+        {/* <CreatePostComponent userAddress={null} onCreatePost={null} /> */}
+
+        <Modal visible={modalVisible} animationType="slide">
+          <CreatePostComponent
+            onCreatePost={null}
+            userAddress={null}
+            onClose={() => setModalVisible(false)}
+          />
+        </Modal>
       </View>
-
-      {/* Posts Feed */}
-      {/* <ScrollView style={styles.feed} showsVerticalScrollIndicator={false}>
-       
-        {posts.map((post) => (
-          <PostItem key={post.postId} handleLike={handleLike} post={post} />
-        ))}
-      </ScrollView> */}
-
-      {/* <FlatList
-        data={posts}
-        keyExtractor={(item) => item?.postId.toString()}
-        renderItem={({ item }) => (
-          <PostItem handleLike={handleLike} post={item} />
-        )}
-        contentContainerStyle={styles.feed}
-        showsVerticalScrollIndicator={false}
-        onEndReached={fetchPosts}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={() =>
-          loading ? (
-            <View style={{ paddingVertical: 20 }}>
-              <ActivityIndicator size="large" color="#2196F3" />
-            </View>
-          ) : null
-        }
-      /> */}
 
       <FlatList
         data={posts}
@@ -221,3 +210,9 @@ const StarkZuriHomepage = () => {
 };
 
 export default StarkZuriHomepage;
+
+// import { Redirect } from "expo-router";
+
+// export default function Index() {
+//   return <Redirect href="/(auth)/login" />;
+// }

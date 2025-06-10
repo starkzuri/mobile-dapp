@@ -47,6 +47,10 @@ export default function RootLayout() {
           name="modals/single_post"
           options={{ presentation: "modal" }}
         />
+        <Stack.Screen
+          name="modals/PostComponent"
+          options={{ presentation: "modal" }}
+        />
       </Stack>
       <StatusBar style="light" />
     </AppProvider>

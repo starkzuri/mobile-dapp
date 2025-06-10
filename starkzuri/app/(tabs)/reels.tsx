@@ -8,9 +8,11 @@ import {
   StatusBar,
   TouchableOpacity,
   TextInput,
+  Modal,
 } from "react-native";
 import { Video } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
+import CreateReelForm from "@/components/CreateReelForm";
 
 const { height, width } = Dimensions.get("window");
 
@@ -132,6 +134,7 @@ export default function App() {
   const [visibleIndex, setVisibleIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [reels, setReels] = useState<Reel[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const view_reels = () => {
     const myCall = contract.populate("view_reels", []);
@@ -188,8 +191,14 @@ export default function App() {
           index,
         })}
       />
+      <Modal visible={modalVisible} animationType="slide">
+        <CreateReelForm onClose={() => setModalVisible(false)} />
+      </Modal>
 
-      <TouchableOpacity style={styles.createReelButton}>
+      <TouchableOpacity
+        onPress={() => setModalVisible(true)}
+        style={styles.createReelButton}
+      >
         <Ionicons name="add-circle" size={48} color="#1f87fc" />
       </TouchableOpacity>
     </View>
