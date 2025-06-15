@@ -1,44 +1,43 @@
-// import { Stack } from "expo-router";
-// import { AppProvider } from "@/providers/AppProvider";
-// import { StatusBar } from "expo-status-bar";
-// import { useFonts } from "expo-font";
-
-// export default function RootLayout() {
-//   const [loaded] = useFonts({
-//     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
-//   });
-
-//   if (!loaded) return null;
-
-//   return (
-//     <AppProvider>
-//       <Stack>
-//         {/* Do NOT include `(tabs)` here as a screen */}
-//         {/* Instead, modal screens go here */}
-//         <Stack.Screen
-//           name="modals/single_post"
-//           options={{
-//             presentation: "modal",
-//             headerShown: false,
-//           }}
-//         />
-//         <Stack.Screen
-//           name="+not-found"
-//           options={{
-//             headerShown: false,
-//           }}
-//         />
-//       </Stack>
-//       <StatusBar style="auto" />
-//     </AppProvider>
-//   );
-// }
-
-import { Stack } from "expo-router";
+import { useEffect, useState } from "react";
+import { Stack, Slot, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { AppProvider } from "@/providers/AppProvider";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { View, ActivityIndicator } from "react-native";
 
 export default function RootLayout() {
+  const router = useRouter();
+  const [checkingLogin, setCheckingLogin] = useState(false);
+
+  useEffect(() => {
+    const checkLogin = async () => {
+      try {
+        const privateKey = await AsyncStorage.getItem("privateKey");
+        const accountAddress = await AsyncStorage.getItem("accountAddress");
+
+        if (privateKey && accountAddress) {
+          router.replace("/"); // User is logged in
+        } else {
+          router.replace("/login"); // Not logged in
+        }
+      } catch (e) {
+        router.replace("/login");
+      } finally {
+        setCheckingLogin(false);
+      }
+    };
+
+    checkLogin();
+  }, []);
+
+  if (checkingLogin) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
   return (
     <AppProvider>
       <Stack screenOptions={{ headerShown: false }}>

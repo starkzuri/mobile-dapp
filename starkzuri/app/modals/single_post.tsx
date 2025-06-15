@@ -292,7 +292,7 @@ const SinglePostPage = () => {
         {/* Engagement Stats */}
 
         {/* Comments Section */}
-        <View style={styles.commentsSection}>
+        {/* <View style={styles.commentsSection}>
           <Text style={styles.commentsTitle}>Comments</Text>
           <FlatList
             data={commentList}
@@ -301,11 +301,12 @@ const SinglePostPage = () => {
             scrollEnabled={false}
             showsVerticalScrollIndicator={false}
           />
-        </View>
+        </View> */}
+        <CommentComponent postId={1} />
       </ScrollView>
 
       {/* Comment Input */}
-      <View style={styles.commentInputContainer}>
+      {/* <View style={styles.commentInputContainer}>
         <View style={styles.commentInputAvatar}>
           <Text style={styles.commentInputAvatarText}>You</Text>
         </View>
@@ -326,7 +327,7 @@ const SinglePostPage = () => {
             <Ionicons name="send" size={16} color="#ffffff" />
           </TouchableOpacity>
         </View>
-      </View>
+      </View> */}
     </SafeAreaView>
   );
 };

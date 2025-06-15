@@ -1,8 +1,47 @@
 import { View, Text, TouchableOpacity } from "react-native";
 import styles from "@/styles/index";
 import React from "react";
+import { CallData, uint256, cairo } from "starknet";
+import { useAppContext } from "@/providers/AppProvider";
 
-const PostFooter = ({ post, handleLike }) => {
+const PostFooter = ({ post }) => {
+  const { account, isReady, contract } = useAppContext();
+  // console.log(account);
+
+  const handleLike = async () => {
+    if (!isReady || !account) return;
+
+    const ETH_ADDRESS =
+      "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
+    const POST_CONTRACT =
+      "0x7c2109cfa8c36fa10c6baac19b234679606cba00eb6697a052b73b869850673";
+    const FEE = BigInt("31000000000000");
+
+    const myCall = contract.populate("like_post", [post.postId]);
+
+    const calls = [
+      {
+        contractAddress: ETH_ADDRESS,
+        entrypoint: "approve",
+        calldata: CallData.compile({
+          spender: POST_CONTRACT,
+          amount: uint256.bnToUint256(FEE),
+        }),
+      },
+      {
+        contractAddress: POST_CONTRACT,
+        entrypoint: "like_post",
+        calldata: myCall.calldata,
+      },
+    ];
+
+    try {
+      const res = await account.execute(calls);
+      console.log("Transaction sent!", res.transaction_hash);
+    } catch (err) {
+      console.error("TX failed:", err);
+    }
+  };
   return (
     <View>
       {/* Rewards Section */}

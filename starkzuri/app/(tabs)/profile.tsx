@@ -2,305 +2,532 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  ScrollView,
-  TouchableOpacity,
   Image,
+  TouchableOpacity,
+  ScrollView,
   StyleSheet,
-  StatusBar,
-  SafeAreaView,
+  Modal,
   Dimensions,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import styles from "../../styles/profile";
+import {
+  Bell,
+  Users,
+  UserPlus,
+  Settings,
+  Award,
+  Calendar,
+  Star,
+  Zap,
+} from "lucide-react-native";
+import RewardCards from "@/components/RewardCard";
+import { useAppContext } from "@/providers/AppProvider";
+import { bigintToShortStr } from "@/utils/AppUtils";
+import MiniFunctions from "@/utils/MiniFunctions";
+import ProfileUpdateComponent from "@/components/UpdateUser";
 
 const { width } = Dimensions.get("window");
 
-const StarkZuriProfile = () => {
-  const [activeTab, setActiveTab] = useState("posts");
-  const [following, setFollowing] = useState(false);
+type User = {
+  userId: number;
+  name: number;
+  username: number;
+  about: string;
+  profile_pic: string;
+  cover_photo: string;
+  date_registered: number;
+  no_of_followers: number;
+  number_following: number;
+  notifications: number;
+  zuri_points: number;
+};
 
-  const userStats = {
-    followers: "12.4K",
-    following: "892",
-    posts: "156",
-    totalRewards: "2,847.5",
-    weeklyEarnings: "+124.8",
-    rank: "#247",
+const UserProfile = () => {
+  const { account, isReady, contract } = useAppContext();
+  const user = MiniFunctions(account?.address?.toString());
+  const [modalVisible, setModalVisible] = useState(false);
+  // console.log(user);
+  const [isFollowing, setIsFollowing] = useState(false);
+
+  // Sample user data with BigInt conversion handled
+  const userData = {
+    userId:
+      "3576822344088438784960174474173613065167062044832123606782432014284400833814",
+    name: "Felix Awere", // Decoded from BigInt
+    username: "felabs", // Decoded from BigInt
+    about: "Founder, Stark Zuri",
+    profile_pic:
+      "https://hambre.infura-ipfs.io/ipfs/QmdZ3v9VC3wWcVxAdqADvPGnaKYyYjXDDbL5G7BEVWwv8u",
+    cover_photo:
+      "https://hambre.infura-ipfs.io/ipfs/QmWN4W1bpmxPVnKXgrRwTCU4WtwcFksPw3wgeudN6EqGWR",
+    date_registered: new Date(Number("1720735255") * 1000),
+    no_of_followers: "14",
+    number_following: "7",
+    notifications: "95",
+    zuri_points: "23,999",
   };
 
-  const recentPosts = [
-    {
-      id: 1,
-      content:
-        "Just discovered this amazing DeFi protocol! The yields are insane 🚀 #DeFi #Crypto",
-      likes: 342,
-      comments: 89,
-      rewards: "45.2",
-      timestamp: "2h ago",
-      engagement: 98,
-    },
-    {
-      id: 2,
-      content:
-        "Market analysis: Bitcoin looking bullish after breaking the resistance. What do you think? 📈",
-      likes: 567,
-      comments: 134,
-      rewards: "78.9",
-      timestamp: "6h ago",
-      engagement: 156,
-    },
-    {
-      id: 3,
-      content:
-        "Attending the biggest crypto conference of the year! So many alpha opportunities 💎",
-      likes: 234,
-      comments: 45,
-      rewards: "32.1",
-      timestamp: "1d ago",
-      engagement: 67,
-    },
-  ];
+  const formatDate = (date) => {
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+    });
+  };
 
-  const achievements = [
-    { icon: "🏆", title: "Top Performer", desc: "Top 5% earner this month" },
-    { icon: "💎", title: "Diamond Hands", desc: "100+ high-engagement posts" },
-    { icon: "🚀", title: "Viral Creator", desc: "Post reached 10K+ views" },
-    { icon: "⭐", title: "Rising Star", desc: "1000% growth in 30 days" },
-  ];
-
-  const renderPost = (post) => (
-    <View key={post.id} style={styles.postCard}>
-      <View style={styles.postHeader}>
-        <View style={styles.postUserInfo}>
-          <View style={styles.userAvatar}>
-            <Ionicons name="person" size={20} color="#fff" />
-          </View>
-          <View>
-            <Text style={styles.userName}>Alex Chen</Text>
-            <Text style={styles.timestamp}>{post.timestamp}</Text>
-          </View>
-        </View>
-        <View style={styles.rewardBadge}>
-          <Ionicons name="diamond" size={14} color="#1f87fc" />
-          <Text style={styles.rewardText}>+{post.rewards} SZ</Text>
-        </View>
-      </View>
-
-      <Text style={styles.postContent}>{post.content}</Text>
-
-      <View style={styles.postFooter}>
-        <View style={styles.engagementStats}>
-          <TouchableOpacity style={styles.statButton}>
-            <Ionicons name="heart-outline" size={20} color="#9CA3AF" />
-            <Text style={styles.statText}>{post.likes}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.statButton}>
-            <Ionicons name="chatbubble-outline" size={20} color="#9CA3AF" />
-            <Text style={styles.statText}>{post.comments}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.statButton}>
-            <Ionicons name="share-outline" size={20} color="#9CA3AF" />
-            <Text style={styles.statText}>Share</Text>
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.engagementPoints}>{post.engagement} points</Text>
-      </View>
-    </View>
-  );
-
-  const renderAchievement = (achievement, index) => (
-    <View key={index} style={styles.achievementCard}>
-      <Text style={styles.achievementIcon}>{achievement.icon}</Text>
-      <View style={styles.achievementInfo}>
-        <Text style={styles.achievementTitle}>{achievement.title}</Text>
-        <Text style={styles.achievementDesc}>{achievement.desc}</Text>
-      </View>
+  const StatCard = ({ icon: Icon, label, value, color = "#ffffff" }) => (
+    <View style={styles.statCard}>
+      <Icon size={20} color={color} style={styles.statIcon} />
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1F2937" />
+    <>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        {/* Cover Photo */}
+        <View style={styles.coverContainer}>
+          <Image
+            source={{ uri: user?.cover_photo }}
+            style={styles.coverPhoto}
+            defaultSource={{
+              uri: user?.cover_photo,
+            }}
+          />
+          <View style={styles.coverOverlay} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.appLogo}>
-            <Text style={styles.logoText}>SZ</Text>
+          {/* Header Actions */}
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.actionButton}>
+              <Bell size={20} color="#ffffff" />
+              {userData.notifications !== "0" && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.badgeText}>{userData.notifications}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton}>
+              <Settings size={20} color="#ffffff" />
+            </TouchableOpacity>
           </View>
-          <Text style={styles.appName}>Stark Zuri</Text>
         </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="share-outline" size={24} color="#9CA3AF" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="settings-outline" size={24} color="#9CA3AF" />
-          </TouchableOpacity>
-        </View>
-      </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-      >
         {/* Profile Section */}
-        <View style={styles.profileCard}>
-          <View style={styles.profileHeader}>
-            <View style={styles.profileImageContainer}>
-              <View style={styles.profileImage}>
-                <Ionicons name="person" size={32} color="#fff" />
-              </View>
-              <View style={styles.onlineIndicator}>
-                <Ionicons name="flash" size={12} color="#fff" />
+        <View style={styles.profileSection}>
+          {/* Profile Picture */}
+          <View style={styles.profilePicContainer}>
+            <Image
+              source={{ uri: user?.profile_pic }}
+              style={styles.profilePic}
+              defaultSource={{
+                uri: user?.cover_photo,
+              }}
+            />
+            <View style={styles.onlineIndicator} />
+          </View>
+
+          {/* User Info */}
+          <View style={styles.userInfo}>
+            <View style={styles.nameContainer}>
+              <Text style={styles.displayName}>
+                {bigintToShortStr(user?.name)}
+              </Text>
+              <View style={styles.verifiedBadge}>
+                <Star size={16} color="#1f87fc" fill="#1f87fc" />
               </View>
             </View>
+            <Text style={styles.username}>
+              @{bigintToShortStr(user.username)}
+            </Text>
+            <Text style={styles.about}>{user?.about}</Text>
 
-            <View style={styles.profileInfo}>
-              <View style={styles.nameContainer}>
-                <Text style={styles.profileName}>Alex Chen</Text>
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>Crypto Influencer</Text>
-                </View>
-              </View>
-
-              <Text style={styles.bio}>
-                🚀 DeFi Enthusiast | 💎 Diamond Hand Trader | 📈 Market Analyst
-                {"\n"}
-                Sharing alpha and insights to help you navigate the crypto space
+            {/* Join Date */}
+            <View style={styles.joinDate}>
+              <Calendar size={14} color="#666666" />
+              <Text style={styles.joinDateText}>
+                Joined{" "}
+                {formatDate(
+                  new Date(Number(user?.date_registered?.toString()) * 1000)
+                )}
               </Text>
-
-              <View style={styles.statsContainer}>
-                <View style={styles.stat}>
-                  <Text style={styles.statNumber}>{userStats.followers}</Text>
-                  <Text style={styles.statLabel}>Followers</Text>
-                </View>
-                <View style={styles.stat}>
-                  <Text style={styles.statNumber}>{userStats.following}</Text>
-                  <Text style={styles.statLabel}>Following</Text>
-                </View>
-                <View style={styles.stat}>
-                  <Text style={styles.statNumber}>{userStats.posts}</Text>
-                  <Text style={styles.statLabel}>Posts</Text>
-                </View>
-              </View>
             </View>
           </View>
 
+          {/* Action Buttons */}
           <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={[styles.followButton, following && styles.followingButton]}
-              onPress={() => setFollowing(!following)}
+            {/* <TouchableOpacity
+              style={[
+                styles.followButton,
+                isFollowing && styles.followingButton,
+              ]}
+              onPress={() => setIsFollowing(!isFollowing)}
             >
+              <UserPlus size={18} color={isFollowing ? "#1f87fc" : "#ffffff"} />
               <Text
                 style={[
                   styles.followButtonText,
-                  following && styles.followingButtonText,
+                  isFollowing && styles.followingButtonText,
                 ]}
               >
-                {following ? "Following" : "Follow"}
+                {isFollowing ? "Following" : "Follow"}
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.messageButton}>
-              <Text style={styles.messageButtonText}>Message</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+            </TouchableOpacity> */}
 
-        {/* Crypto Stats */}
-        <View style={styles.cryptoStatsContainer}>
-          <View style={[styles.cryptoStatCard, styles.earningsCard]}>
-            <View style={styles.cryptoStatHeader}>
-              <Ionicons name="diamond" size={24} color="#fff" />
-              <Text style={styles.cryptoStatChange}>
-                {userStats.weeklyEarnings} SZ
-              </Text>
-            </View>
-            <Text style={styles.cryptoStatValue}>{userStats.totalRewards}</Text>
-            <Text style={styles.cryptoStatLabel}>Total SZ Earned</Text>
-          </View>
-
-          <View style={[styles.cryptoStatCard, styles.rankCard]}>
-            <View style={styles.cryptoStatHeader}>
-              <Ionicons name="trending-up" size={24} color="#fff" />
-              <Ionicons name="trophy" size={20} color="#FFD700" />
-            </View>
-            <Text style={styles.cryptoStatValue}>{userStats.rank}</Text>
-            <Text style={styles.cryptoStatLabel}>Global Rank</Text>
-          </View>
-
-          <View style={[styles.cryptoStatCard, styles.engagementCard]}>
-            <View style={styles.cryptoStatHeader}>
-              <Ionicons name="eye" size={24} color="#fff" />
-              <Ionicons name="star" size={20} color="#FFD700" />
-            </View>
-            <Text style={styles.cryptoStatValue}>89.2%</Text>
-            <Text style={styles.cryptoStatLabel}>Engagement Rate</Text>
-          </View>
-        </View>
-
-        {/* Achievements */}
-        <View style={styles.achievementsCard}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="trophy" size={20} color="#1f87fc" />
-            <Text style={styles.sectionTitle}>Recent Achievements</Text>
-          </View>
-          <View style={styles.achievementsGrid}>
-            {achievements.map((achievement, index) =>
-              renderAchievement(achievement, index)
-            )}
-          </View>
-        </View>
-
-        {/* Navigation Tabs */}
-        <View style={styles.tabContainer}>
-          {["posts", "rewards", "analytics"].map((tab) => (
             <TouchableOpacity
-              key={tab}
-              style={[styles.tab, activeTab === tab && styles.activeTab]}
-              onPress={() => setActiveTab(tab)}
+              style={styles.followButton}
+              onPress={() => setIsFollowing(!isFollowing)}
             >
+              <UserPlus size={18} color={"#ffffff"} />
               <Text
-                style={[
-                  styles.tabText,
-                  activeTab === tab && styles.activeTabText,
-                ]}
+                style={[styles.followButtonText]}
+                onPress={() => setModalVisible(true)}
               >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                Update Account
               </Text>
             </TouchableOpacity>
-          ))}
+
+            <Modal visible={modalVisible} animationType="slide">
+              <ProfileUpdateComponent onClose={null} />
+            </Modal>
+
+            {/* <TouchableOpacity style={styles.messageButton}>
+              <Text style={styles.messageButtonText}>Sell Zuri Points</Text>
+            </TouchableOpacity> */}
+          </View>
         </View>
 
-        {/* Content */}
-        {activeTab === "posts" && (
-          <View style={styles.postsContainer}>
-            {recentPosts.map(renderPost)}
-          </View>
-        )}
+        {/* Stats Section */}
+        <View style={styles.statsContainer}>
+          <StatCard
+            icon={Users}
+            label="Followers"
+            value={user?.no_of_followers.toString()}
+            color="#1f87fc"
+          />
+          <StatCard
+            icon={UserPlus}
+            label="Following"
+            value={user?.number_following.toString()}
+            color="#1f87fc"
+          />
+          <StatCard
+            icon={Zap}
+            label="Zuri Points"
+            value={user?.zuri_points.toString()}
+            color="#ffd700"
+          />
+          {/* <StatCard icon={Award} label="Rewards" value="12" color="#ff6b6b" /> */}
+        </View>
 
-        {activeTab === "rewards" && (
-          <View style={styles.placeholderCard}>
-            <Ionicons name="diamond" size={64} color="#1f87fc" />
-            <Text style={styles.placeholderTitle}>Reward Analytics</Text>
-            <Text style={styles.placeholderText}>
-              Detailed reward breakdown and earning history coming soon!
+        {/* Zuri Points Section */}
+        <View style={styles.pointsSection}>
+          <View style={styles.pointsHeader}>
+            <Zap size={24} color="#ffd700" />
+            <Text style={styles.pointsTitle}>Zuri Points</Text>
+          </View>
+          <Text style={styles.pointsSubtitle}>
+            Earn points by creating engaging content and interacting with the
+            community
+          </Text>
+          <View style={styles.pointsProgress}>
+            <View style={styles.progressBar}>
+              <View style={[styles.progressFill, { width: "25%" }]} />
+            </View>
+            <Text style={styles.progressText}>Next reward at 100 points</Text>
+          </View>
+        </View>
+
+        {/* StarkNet Integration Info */}
+        <View style={styles.blockchainSection}>
+          <Text style={styles.blockchainTitle}>Built on StarkNet</Text>
+          <Text style={styles.blockchainSubtitle}>
+            Your rewards and interactions are secured by StarkNet's
+            zero-knowledge technology
+          </Text>
+          <View style={styles.userIdContainer}>
+            <Text style={styles.userIdLabel}>User ID:</Text>
+            <Text
+              style={styles.userId}
+              numberOfLines={1}
+              ellipsizeMode="middle"
+            >
+              {userData.userId}
             </Text>
           </View>
-        )}
-
-        {activeTab === "analytics" && (
-          <View style={styles.placeholderCard}>
-            <Ionicons name="trending-up" size={64} color="#1f87fc" />
-            <Text style={styles.placeholderTitle}>Performance Analytics</Text>
-            <Text style={styles.placeholderText}>
-              Advanced analytics and insights dashboard coming soon!
-            </Text>
-          </View>
-        )}
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </>
   );
 };
 
-export default StarkZuriProfile;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#0a0a0a",
+  },
+  coverContainer: {
+    position: "relative",
+    height: 200,
+  },
+  coverPhoto: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#1a1a1a",
+  },
+  coverOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+  },
+  headerActions: {
+    position: "absolute",
+    top: 50,
+    right: 20,
+    flexDirection: "row",
+    gap: 12,
+  },
+  actionButton: {
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    padding: 12,
+    borderRadius: 25,
+    position: "relative",
+  },
+  notificationBadge: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    backgroundColor: "#ff4444",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  badgeText: {
+    color: "#ffffff",
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  profileSection: {
+    padding: 20,
+    paddingTop: 0,
+  },
+  profilePicContainer: {
+    alignSelf: "center",
+    marginTop: -50,
+    position: "relative",
+  },
+  profilePic: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 4,
+    borderColor: "#0a0a0a",
+    backgroundColor: "#1a1a1a",
+  },
+  onlineIndicator: {
+    position: "absolute",
+    bottom: 5,
+    right: 5,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#00ff88",
+    borderWidth: 3,
+    borderColor: "#0a0a0a",
+  },
+  userInfo: {
+    alignItems: "center",
+    marginTop: 16,
+  },
+  nameContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  displayName: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#ffffff",
+  },
+  verifiedBadge: {
+    backgroundColor: "rgba(31, 135, 252, 0.1)",
+    padding: 4,
+    borderRadius: 12,
+  },
+  username: {
+    fontSize: 16,
+    color: "#1f87fc",
+    marginTop: 4,
+  },
+  about: {
+    fontSize: 14,
+    color: "#cccccc",
+    textAlign: "center",
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  joinDate: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 12,
+  },
+  joinDateText: {
+    fontSize: 12,
+    color: "#666666",
+  },
+  actionButtons: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 20,
+    justifyContent: "center",
+  },
+  followButton: {
+    backgroundColor: "#1f87fc",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 25,
+    gap: 8,
+  },
+  followingButton: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: "#1f87fc",
+  },
+  followButtonText: {
+    color: "#ffffff",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+  followingButtonText: {
+    color: "#1f87fc",
+  },
+  messageButton: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: "#333333",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  messageButtonText: {
+    color: "#ffffff",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+  statsContainer: {
+    flexDirection: "row",
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: "#1a1a1a",
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#333333",
+  },
+  statIcon: {
+    marginBottom: 8,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#ffffff",
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: "#666666",
+    textAlign: "center",
+  },
+  pointsSection: {
+    margin: 20,
+    backgroundColor: "#1a1a1a",
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "#333333",
+  },
+  pointsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 8,
+  },
+  pointsTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#ffffff",
+  },
+  pointsSubtitle: {
+    fontSize: 14,
+    color: "#cccccc",
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  pointsProgress: {
+    gap: 8,
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: "#333333",
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: "#ffd700",
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 12,
+    color: "#666666",
+    textAlign: "center",
+  },
+  blockchainSection: {
+    margin: 20,
+    marginTop: 0,
+    backgroundColor: "#1a1a1a",
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "#1f87fc",
+  },
+  blockchainTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#1f87fc",
+    marginBottom: 8,
+  },
+  blockchainSubtitle: {
+    fontSize: 14,
+    color: "#cccccc",
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  userIdContainer: {
+    backgroundColor: "#0a0a0a",
+    borderRadius: 8,
+    padding: 12,
+  },
+  userIdLabel: {
+    fontSize: 12,
+    color: "#666666",
+    marginBottom: 4,
+  },
+  userId: {
+    fontSize: 12,
+    color: "#1f87fc",
+    fontFamily: "monospace",
+  },
+});
+
+export default UserProfile;

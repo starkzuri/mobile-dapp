@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
+  Platform,
 } from "react-native";
 import { Video } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
@@ -57,18 +58,36 @@ const ReelItem = ({ item, isVisible }) => {
   const videoRef = useRef(null);
 
   React.useEffect(() => {
-    if (isVisible) {
-      videoRef.current?.playAsync();
-    } else {
-      videoRef.current?.pauseAsync();
-    }
+    const playOrPause = async () => {
+      if (!videoRef.current) return;
+
+      if (Platform.OS === "web") {
+        const domVideo = videoRef.current;
+        if (isVisible) {
+          domVideo.play?.();
+        } else {
+          domVideo.pause?.();
+        }
+      } else {
+        if (isVisible) {
+          await videoRef.current.playAsync();
+        } else {
+          await videoRef.current.pauseAsync();
+        }
+      }
+    };
+
+    playOrPause();
   }, [isVisible]);
 
   useFocusEffect(() => {
     return () => {
-      // pause the video when navigating away
       if (videoRef.current) {
-        videoRef.current.pauseAsync();
+        if (Platform.OS === "web") {
+          videoRef.current.pause?.(); // HTML5 video pause
+        } else {
+          videoRef.current.pauseAsync(); // Native pause
+        }
       }
     };
   });

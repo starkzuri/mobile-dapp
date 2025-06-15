@@ -10,15 +10,18 @@ import {
   SafeAreaView,
   ActivityIndicator,
   StatusBar,
+  Pressable,
   Modal,
   FlatList,
 } from "react-native";
+import { useRouter } from "expo-router";
 import styles from "../../styles/index";
 import PostItem from "@/components/PostItem";
 import { useAppContext } from "@/providers/AppProvider";
 import usePaginationStore from "@/stores/usePaginationStore";
 import CreatePostComponent from "@/components/PostComponent";
 import PostContent from "@/components/PostContent";
+import MiniFunctions from "@/utils/MiniFunctions";
 
 type Post = {
   postId: number;
@@ -33,9 +36,11 @@ type Post = {
 };
 
 const StarkZuriHomepage = () => {
-  const { contract } = useAppContext();
+  const { contract, account } = useAppContext();
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const router = useRouter();
+  const user = MiniFunctions(account?.address?.toString());
 
   const {
     page,
@@ -164,12 +169,15 @@ const StarkZuriHomepage = () => {
 
       {/* Create Post Section */}
       <View style={styles.createPostContainer}>
-        <Image
-          source={{
-            uri: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
-          }}
-          style={styles.userAvatar}
-        />
+        <Pressable onPress={() => router.push("/profile")}>
+          <Image
+            source={{
+              uri: user.profile_pic,
+            }}
+            style={styles.userAvatar}
+          />
+        </Pressable>
+
         <TouchableOpacity
           onPress={() => setModalVisible(true)}
           style={styles.createPostInput}

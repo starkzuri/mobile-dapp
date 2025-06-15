@@ -128,4 +128,8 @@ const MiniFunctions = (accountAddress: bigint | string): User => {
   return user;
 };
 
+// const viewConnectedUser = (id: string) => {
+//   const { contract } = useAppContext();
+// };
+
 export default MiniFunctions;
