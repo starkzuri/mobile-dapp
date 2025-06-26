@@ -1,350 +1,459 @@
-import React, { useState } from "react";
+//
+
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   ScrollView,
-  Image,
   TouchableOpacity,
+  Image,
   StyleSheet,
-  SafeAreaView,
-  StatusBar,
+  Dimensions,
+  Animated,
+  RefreshControl,
 } from "react-native";
-import styles from "../../styles/notifications";
+import { Ionicons } from "@expo/vector-icons";
+import { useAppContext } from "@/providers/AppProvider";
+import MiniFunctions from "@/utils/MiniFunctions";
+import { bigintToLongAddress, bigintToShortStr } from "@/utils/AppUtils";
+import RenderNotification from "@/components/RenderNotification";
+
+const { width } = Dimensions.get("window");
 
 const StarkZuriNotifications = () => {
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: "reward",
-      user: {
-        name: "Sarah Chen",
-        username: "@sarahc",
-        avatar:
-          "https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=150&h=150&fit=crop&crop=face",
-      },
-      message: "Your post earned $12.50 in rewards!",
-      time: "5m",
-      amount: 12.5,
-      unread: true,
-      icon: "💰",
-    },
-    {
-      id: 2,
-      type: "like",
-      user: {
-        name: "Marcus Rodriguez",
-        username: "@marcusr",
-        avatar:
-          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
-      },
-      message: "liked your post about photography",
-      time: "12m",
-      unread: true,
-      icon: "❤️",
-    },
-    {
-      id: 3,
-      type: "follow",
-      user: {
-        name: "Elena Vasquez",
-        username: "@elenadesigns",
-        avatar:
-          "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
-      },
-      message: "started following you",
-      time: "1h",
-      unread: true,
-      icon: "👤",
-    },
-    {
-      id: 4,
-      type: "reward_milestone",
-      message: "Congratulations! You've earned $100 total rewards this month!",
-      time: "2h",
-      amount: 100,
-      unread: false,
-      icon: "🎉",
-    },
-    {
-      id: 5,
-      type: "comment",
-      user: {
-        name: "Alex Thompson",
-        username: "@alextech",
-        avatar:
-          "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face",
-      },
-      message: 'commented: "This is amazing work! Keep it up 🔥"',
-      time: "3h",
-      unread: false,
-      icon: "💬",
-    },
-    {
-      id: 6,
-      type: "support",
-      user: {
-        name: "Jamie Wilson",
-        username: "@jamiew",
-        avatar:
-          "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face",
-      },
-      message: "supported you with $5.00",
-      time: "4h",
-      amount: 5.0,
-      unread: false,
-      icon: "💎",
-    },
-    {
-      id: 7,
-      type: "share",
-      user: {
-        name: "David Kim",
-        username: "@davidk",
-        avatar:
-          "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
-      },
-      message: "shared your post",
-      time: "6h",
-      unread: false,
-      icon: "🔄",
-    },
-    {
-      id: 8,
-      type: "trending",
-      message: "Your post is trending! It's in the top 10 today.",
-      time: "8h",
-      unread: false,
-      icon: "📈",
-    },
-    {
-      id: 9,
-      type: "reward",
-      user: {
-        name: "Lisa Park",
-        username: "@lisapark",
-        avatar:
-          "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&h=150&fit=crop&crop=face",
-      },
-      message: "Your comment earned $2.25 in rewards",
-      time: "1d",
-      amount: 2.25,
-      unread: false,
-      icon: "💰",
-    },
-    {
-      id: 10,
-      type: "feature",
-      message: "New feature: Enhanced creator analytics now available!",
-      time: "2d",
-      unread: false,
-      icon: "✨",
-    },
-  ]);
+  const { contract, account, isReady, viewUser } = useAppContext();
+  const [isLoading, setIsLoading] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [fadeAnim] = useState(() => new Animated.Value(0));
+  // const user = MiniFunctions("");
+  const user = MiniFunctions(account?.address?.toString());
 
-  const [filter, setFilter] = useState("all");
+  // Mock user data - in real app this would come from your user service
+  const mockUsers = {
+    "85103766236013673763402341": {
+      username: "alex_creator",
+      profilePic:
+        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
+      verified: true,
+    },
+    "135878797943861642785159013": {
+      username: "sarah_dev",
+      profilePic:
+        "https://images.unsplash.com/photo-1494790108755-2616b332c265?w=100&h=100&fit=crop&crop=face",
+      verified: false,
+    },
+    "0": {
+      username: "zuri_system",
+      profilePic:
+        "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=face",
+      verified: true,
+    },
+  };
+
+  // Sample notification data based on your structure
+  const sampleNotifications = [
+    {
+      notification_id: "1",
+      caller: "85103766236013673763402341",
+      receiver:
+        "3576822344088438784960174474173613065167062044832123606782432014284400833814",
+      notification_message:
+        "commented on your post and that earned your post 2 zuri points",
+      notification_type: "27988538471837300", // comment
+      notification_status: "129117226099044", // unread
+      timestamp: "1720736743",
+    },
+    {
+      notification_id: "2",
+      caller: "85103766236013673763402341",
+      receiver:
+        "3576822344088438784960174474173613065167062044832123606782432014284400833814",
+      notification_message: "liked your post and won you 10 Zuri points",
+      notification_type: "1818848101", // like
+      notification_status: "129117226099044", // unread
+      timestamp: "1720736743",
+    },
+    {
+      notification_id: "3",
+      caller: "85103766236013673763402341",
+      receiver:
+        "3576822344088438784960174474173613065167062044832123606782432014284400833814",
+      notification_message: "followed you",
+      notification_type: "28832959090882337", // follow
+      notification_status: "129117226099044", // unread
+      timestamp: "1720798294",
+    },
+    {
+      notification_id: "4",
+      caller: "135878797943861642785159013",
+      receiver:
+        "3576822344088438784960174474173613065167062044832123606782432014284400833814",
+      notification_message: "liked your reel and won you 10 zuri points",
+      notification_type: "1818848101", // like
+      notification_status: "0", // read
+      timestamp: "1720799027",
+    },
+    {
+      notification_id: "5",
+      caller: "0",
+      receiver:
+        "3576822344088438784960174474173613065167062044832123606782432014284400833814",
+      notification_message: "liked your post and won you 10 Zuri points",
+      notification_type: "1818848101", // like
+      notification_status: "0", // read
+      timestamp: "1720972305",
+    },
+  ];
+
+  const fetchNotifications = async () => {
+    if (!contract || !account) return;
+    const userAddress = account?.address?.toString();
+    const myCall = contract.populate("view_notifications", [userAddress]);
+    setIsLoading(true);
+    contract["view_notifications"](myCall.calldata, {
+      parseResponse: false,
+      parseRequest: false,
+    })
+      .then((res) => {
+        let val = contract.callData.parse(
+          "view_notifications",
+          res?.result ?? res
+        );
+
+        // setUsers(val);
+        console.log("Notifications", val);
+        setNotifications(val.reverse());
+        // console.log(val)
+        // setNotifications(val.reverse());
+      })
+      .catch((err) => {
+        console.error("Error: ", err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    // setNotifications(sampleNotifications);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
+  }, [contract, account]);
+
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case "1818848101": // like
+        return "heart";
+      case "27988538471837300": // comment
+        return "chatbubble";
+      case "28832959090882337": // follow
+        return "person-add";
+      default:
+        return "notifications";
+    }
+  };
+
+  const getNotificationColor = (type) => {
+    switch (type) {
+      case "1818848101": // like
+        return "#ff3040";
+      case "27988538471837300": // comment
+        return "#1f87fc";
+      case "28832959090882337": // follow
+        return "#00d4aa";
+      default:
+        return "#1f87fc";
+    }
+  };
+
+  const formatTimestamp = (timestamp) => {
+    const date = new Date(parseInt(timestamp) * 1000);
+    const now = new Date();
+    const diff = now - date;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return "Just now";
+    if (minutes < 60) return `${minutes}m`;
+    if (hours < 24) return `${hours}h`;
+    return `${days}d`;
+  };
+
+  const extractZuriPoints = (message) => {
+    const match = message.match(/(\d+)\s+[Zz]uri\s+points?/);
+    return match ? parseInt(match[1]) : null;
+  };
 
   const markAsRead = (notificationId) => {
-    setNotifications(
-      notifications.map((notif) =>
-        notif.id === notificationId ? { ...notif, unread: false } : notif
+    setNotifications((prev) =>
+      prev.map((notif) =>
+        notif.notification_id === notificationId
+          ? { ...notif, notification_status: "0" }
+          : notif
       )
     );
   };
 
-  const markAllAsRead = () => {
-    setNotifications(
-      notifications.map((notif) => ({ ...notif, unread: false }))
+  const onRefresh = () => {
+    setRefreshing(true);
+    // Simulate API call
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1000);
+  };
+
+  const renderNotification = (notification) => {
+    // const user = mockUsers[notification.caller] || {
+    //   username: "unknown_user",
+    //   profilePic:
+    //     "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=face",
+    //   verified: false,
+    // };
+
+    const caller = bigintToLongAddress(notification?.caller);
+    const user = viewUser(caller.toString()) || {
+      username: "unknown_user",
+      profilePic:
+        "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=face",
+      verified: false,
+    };
+    console.log(user);
+
+    // console.log(caller);
+
+    // const user2 = <MiniFunctions accountAddress={caller.toString()} />;
+
+    const isUnread = notification.notification_status === "129117226099044";
+    const zuriPoints = extractZuriPoints(notification.notification_message);
+    const iconName = getNotificationIcon(notification.notification_type);
+    const iconColor = getNotificationColor(notification.notification_type);
+
+    return (
+      <TouchableOpacity
+        key={notification.notification_id}
+        style={[styles.notificationCard, isUnread && styles.unreadCard]}
+        onPress={() => markAsRead(notification.notification_id)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.notificationContent}>
+          <View style={styles.avatarContainer}>
+            <Image source={{ uri: user?.profile_pic }} style={styles.avatar} />
+            <View style={[styles.iconBadge, { backgroundColor: iconColor }]}>
+              <Ionicons name={iconName} size={12} color="white" />
+            </View>
+          </View>
+
+          <View style={styles.messageContainer}>
+            <View style={styles.messageHeader}>
+              <View style={styles.usernameContainer}>
+                <Text style={styles.username}>
+                  {bigintToShortStr(user?.username)}
+                </Text>
+                {/* {user.verified && (
+                  <Ionicons name="checkmark-circle" size={16} color="#1f87fc" />
+                )} */}
+              </View>
+              <Text style={styles.timestamp}>
+                {formatTimestamp(notification.timestamp)}
+              </Text>
+            </View>
+
+            <Text style={styles.message}>
+              <Text style={styles.action}>
+                {notification.notification_message}
+              </Text>
+            </Text>
+
+            {zuriPoints && (
+              <View style={styles.pointsContainer}>
+                <Ionicons name="diamond" size={16} color="#ffd700" />
+                <Text style={styles.pointsText}>+{zuriPoints} Zuri Points</Text>
+              </View>
+            )}
+          </View>
+
+          {isUnread && <View style={styles.unreadDot} />}
+        </View>
+      </TouchableOpacity>
     );
   };
 
-  const filteredNotifications = notifications.filter((notif) => {
-    if (filter === "unread") return notif.unread;
-    if (filter === "rewards")
-      return (
-        notif.type === "reward" ||
-        notif.type === "support" ||
-        notif.type === "reward_milestone"
-      );
-    return true;
-  });
-
-  const NotificationItem = ({ notification }) => (
-    <TouchableOpacity
-      style={[
-        styles.notificationContainer,
-        notification.unread && styles.unreadNotification,
-      ]}
-      onPress={() => markAsRead(notification.id)}
-    >
-      <View style={styles.notificationContent}>
-        <View style={styles.notificationLeft}>
-          {notification.user ? (
-            <Image
-              source={{ uri: notification.user.avatar }}
-              style={styles.avatar}
-            />
-          ) : (
-            <View style={styles.systemIconContainer}>
-              <Text style={styles.systemIcon}>{notification.icon}</Text>
-            </View>
-          )}
-          <View style={styles.iconBadge}>
-            <Text style={styles.iconBadgeText}>{notification.icon}</Text>
-          </View>
-        </View>
-
-        <View style={styles.notificationBody}>
-          <View style={styles.notificationText}>
-            {notification.user && (
-              <Text style={styles.userName}>{notification.user.name} </Text>
-            )}
-            <Text style={styles.notificationMessage}>
-              {notification.message}
-            </Text>
-          </View>
-
-          {notification.amount && (
-            <View style={styles.amountContainer}>
-              <Text style={styles.amountText}>+${notification.amount}</Text>
-            </View>
-          )}
-
-          <Text style={styles.timeText}>{notification.time}</Text>
-        </View>
-
-        {notification.unread && <View style={styles.unreadDot} />}
-      </View>
-
-      {(notification.type === "follow" || notification.type === "support") && (
-        <View style={styles.actionButtonsContainer}>
-          <TouchableOpacity style={styles.followBackButton}>
-            <Text style={styles.followBackText}>
-              {notification.type === "follow" ? "Follow Back" : "Thank"}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.viewProfileButton}>
-            <Text style={styles.viewProfileText}>View Profile</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </TouchableOpacity>
-  );
-
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1a1a1a" />
-
-      {/* Header */}
+    <View style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity style={styles.backButton}>
-            <Text style={styles.backButtonText}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Notifications</Text>
-        </View>
-        <TouchableOpacity style={styles.markAllButton} onPress={markAllAsRead}>
+        <Text style={styles.headerTitle}>Notifications</Text>
+        <TouchableOpacity style={styles.markAllButton}>
           <Text style={styles.markAllText}>Mark all read</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Filter Tabs */}
-      <View style={styles.filterContainer}>
-        <TouchableOpacity
-          style={[styles.filterTab, filter === "all" && styles.activeFilterTab]}
-          onPress={() => setFilter("all")}
-        >
-          <Text
-            style={[
-              styles.filterText,
-              filter === "all" && styles.activeFilterText,
-            ]}
-          >
-            All
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.filterTab,
-            filter === "unread" && styles.activeFilterTab,
-          ]}
-          onPress={() => setFilter("unread")}
-        >
-          <Text
-            style={[
-              styles.filterText,
-              filter === "unread" && styles.activeFilterText,
-            ]}
-          >
-            Unread
-          </Text>
-          {notifications.filter((n) => n.unread).length > 0 && (
-            <View style={styles.unreadCount}>
-              <Text style={styles.unreadCountText}>
-                {notifications.filter((n) => n.unread).length}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.filterTab,
-            filter === "rewards" && styles.activeFilterTab,
-          ]}
-          onPress={() => setFilter("rewards")}
-        >
-          <Text
-            style={[
-              styles.filterText,
-              filter === "rewards" && styles.activeFilterText,
-            ]}
-          >
-            Rewards
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Notifications List */}
-      <ScrollView
-        style={styles.notificationsList}
-        showsVerticalScrollIndicator={false}
-      >
-        {filteredNotifications.length > 0 ? (
-          filteredNotifications.map((notification) => (
-            <NotificationItem
-              key={notification.id}
-              notification={notification}
+      <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+        <ScrollView
+          style={styles.scrollView}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#1f87fc"
+              colors={["#1f87fc"]}
             />
-          ))
-        ) : (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateIcon}>🔔</Text>
-            <Text style={styles.emptyStateTitle}>No notifications</Text>
-            <Text style={styles.emptyStateText}>
-              {filter === "unread"
-                ? "You're all caught up!"
-                : filter === "rewards"
-                ? "No reward notifications yet"
-                : "No notifications to show"}
-            </Text>
-          </View>
-        )}
-      </ScrollView>
-
-      {/* Quick Actions */}
-      <View style={styles.quickActions}>
-        <TouchableOpacity style={styles.quickActionButton}>
-          <Text style={styles.quickActionIcon}>📊</Text>
-          <Text style={styles.quickActionText}>View Analytics</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickActionButton}>
-          <Text style={styles.quickActionIcon}>💰</Text>
-          <Text style={styles.quickActionText}>Withdraw Rewards</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+          }
+          showsVerticalScrollIndicator={false}
+        >
+          {notifications.map((notification, index) => (
+            <RenderNotification
+              key={index}
+              markAsRead={markAsRead}
+              formatTimestamp={formatTimestamp}
+              getNotificationIcon={getNotificationIcon}
+              getNotificationColor={getNotificationColor}
+              notification={notification}
+              extractZuriPoints={extractZuriPoints}
+            />
+          ))}
+        </ScrollView>
+      </Animated.View>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#0a0a0a",
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#1a1a1a",
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "white",
+  },
+  markAllButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: "#1f87fc20",
+  },
+  markAllText: {
+    color: "#1f87fc",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  content: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  notificationCard: {
+    backgroundColor: "#111111",
+    marginHorizontal: 16,
+    marginVertical: 4,
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#1a1a1a",
+  },
+  unreadCard: {
+    backgroundColor: "#151515",
+    borderColor: "#1f87fc30",
+  },
+  notificationContent: {
+    flexDirection: "row",
+    padding: 16,
+    alignItems: "flex-start",
+  },
+  avatarContainer: {
+    position: "relative",
+    marginRight: 12,
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#333",
+  },
+  iconBadge: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#111111",
+  },
+  messageContainer: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  messageHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  usernameContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  username: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "white",
+    marginRight: 4,
+  },
+  timestamp: {
+    color: "#888",
+    fontSize: 14,
+  },
+  message: {
+    color: "#ccc",
+    fontSize: 15,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  action: {
+    color: "#ddd",
+  },
+  pointsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ffd70020",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: "flex-start",
+  },
+  pointsText: {
+    color: "#ffd700",
+    fontSize: 12,
+    fontWeight: "600",
+    marginLeft: 4,
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#1f87fc",
+    marginTop: 4,
+  },
+});
 
 export default StarkZuriNotifications;

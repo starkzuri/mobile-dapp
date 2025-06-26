@@ -1,15 +1,74 @@
+import { useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import styles from "@/styles/index";
 import React from "react";
 import { CallData, uint256, cairo } from "starknet";
 import { useAppContext } from "@/providers/AppProvider";
+import Toast from "react-native-toast-message";
+import ConfirmPostModal from "./PostConfirmationModal";
+import { CONTRACT_ADDRESS } from "@/providers/abi";
+import { weiToEth } from "@/utils/AppUtils";
 
 const PostFooter = ({ post }) => {
   const { account, isReady, contract } = useAppContext();
+  const [estimateFee, setEstimateFee] = useState("");
+  const [platformFee, setPlatformFee] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+
+  const estimateLikeFees = async () => {
+    if (!account || !isReady || !contract) return;
+    try {
+      const myCall = contract.populate("like_post", [post.postId]);
+
+      const ETH_ADDRESS =
+        "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
+      const POST_CONTRACT =
+        "0x7c2109cfa8c36fa10c6baac19b234679606cba00eb6697a052b73b869850673";
+      const FEE = BigInt("31000000000000");
+
+      const calls = [
+        {
+          contractAddress: ETH_ADDRESS,
+          entrypoint: "approve",
+          calldata: CallData.compile({
+            spender: POST_CONTRACT,
+            amount: uint256.bnToUint256(FEE),
+          }),
+        },
+        {
+          contractAddress: POST_CONTRACT,
+          entrypoint: "like_post",
+          calldata: myCall.calldata,
+        },
+      ];
+      const { suggestedMaxFee, unit } = await account.estimateInvokeFee(calls);
+
+      const likeFee = BigInt("31000000000000");
+      const feeToEth = weiToEth(suggestedMaxFee, 8);
+      const likeFeeToEth = weiToEth(likeFee);
+      setEstimateFee(feeToEth);
+      setPlatformFee(likeFeeToEth);
+    } catch (error) {
+      console.log("estimation error ", error);
+    }
+  };
+
+  const verifyLike = async () => {
+    setIsModalVisible(true);
+    await estimateLikeFees();
+  };
   // console.log(account);
 
   const handleLike = async () => {
-    if (!isReady || !account) return;
+    if (!isReady || !account || !contract) return;
+
+    Toast.show({
+      type: "info",
+      text1: "Processing Transaction...",
+      position: "top",
+      autoHide: false,
+    });
 
     const ETH_ADDRESS =
       "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
@@ -38,8 +97,22 @@ const PostFooter = ({ post }) => {
     try {
       const res = await account.execute(calls);
       console.log("Transaction sent!", res.transaction_hash);
+
+      Toast.hide();
+      Toast.show({
+        type: "success",
+        text1: "Like successful!",
+        text2: "Your like now counts 🎉",
+      });
     } catch (err) {
       console.error("TX failed:", err);
+      Toast.show({
+        type: "error",
+        text1: "like Failed",
+        text2: "Please try again later 😢",
+      });
+    } finally {
+      setIsModalVisible(false);
     }
   };
   return (
@@ -60,10 +133,7 @@ const PostFooter = ({ post }) => {
 
       {/* Action Buttons */}
       <View style={styles.actionsContainer}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => handleLike(post.id)}
-        >
+        <TouchableOpacity style={styles.actionButton} onPress={verifyLike}>
           <Text
             style={[
               styles.actionIcon,
@@ -89,6 +159,15 @@ const PostFooter = ({ post }) => {
           <Text style={styles.actionIcon}>📤</Text>
         </TouchableOpacity>
       </View>
+
+      <ConfirmPostModal
+        gasFee={estimateFee}
+        platformFee={platformFee}
+        message=""
+        onCancel={() => setIsModalVisible(false)}
+        onConfirm={handleLike}
+        visible={isModalVisible}
+      />
 
       {/* Call to Action Buttons */}
       {/* <View style={styles.ctaContainer}>

@@ -7,17 +7,36 @@ import {
   Image,
   StyleSheet,
   ScrollView,
+  Pressable,
   Alert,
   Dimensions,
 } from "react-native";
+import Toast from "react-native-toast-message";
 import { useAppContext } from "@/providers/AppProvider";
+import { multilineToSingleline, weiToEth } from "@/utils/AppUtils";
+import * as ImagePicker from "expo-image-picker";
 import { CONTRACT_ADDRESS } from "@/providers/abi";
 import { CallData } from "starknet";
+import { uploadFile } from "@/utils/Infura";
+import ConfirmPostModal from "./PostConfirmationModal";
 
 const { width } = Dimensions.get("window");
 
+type SelectedFile = {
+  uri: string;
+  name: string;
+  type: string;
+};
+
 const ProfileUpdateComponent = ({ onClose }) => {
   const { account, isReady, contract } = useAppContext();
+  const [isLoading, setIsLoading] = useState(false);
+  const [estimatedFee, setEstimatedFee] = useState("0.00");
+  const [platformFee, setPlatformFee] = useState("0.00");
+  const [isModalVisible, setIsModalVisible] = useState(false);
+
+  // const router = useRouter();
+
   // console.log(account);
 
   const [profileData, setProfileData] = useState({
@@ -35,17 +54,113 @@ const ProfileUpdateComponent = ({ onClose }) => {
     }));
   };
 
+  const handleImagePicker = (type) => {
+    // Mock Image picker in real app
+    Alert.alert("Select Image", "choose an option", [
+      { text: "Camera", onPress: () => selectImage("camera", type) },
+      { text: "gallery", onPress: () => selectImage("gallery", type) },
+    ]);
+  };
+
+  const selectImage = async (source: "camera" | "gallery", type) => {
+    const permissionResult =
+      source === "camera"
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      Alert.alert("Permission required", "you need to allow access");
+      return;
+    }
+
+    const uploadedUrls: string[] = [];
+
+    const result =
+      source === "camera"
+        ? await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.8,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.8,
+          });
+
+    if (!result.canceled && result.assets.length > 0) {
+      const files = result.assets.map((asset) => {
+        const extension = asset.uri.split(".").pop()?.toLowerCase() || "jpg";
+        const mimeType = `image/${extension === "jpg" ? "jpeg" : extension}`;
+
+        return {
+          uri: asset.uri,
+          name: asset.fileName || `image_${Date.now()}.${extension}`,
+          type: mimeType,
+        };
+      });
+
+      for (const file of files) {
+        const url: any = await uploadFile(file);
+        console.log(url); // expects IPFS URL returned
+        uploadedUrls.push(url);
+      }
+
+      setProfileData((prev) => ({
+        ...prev,
+        [type === "profile" ? "profilePicture" : "coverPhoto"]: uploadedUrls[0],
+      }));
+    }
+  };
+
   const handleImageUpload = (type) => {
     // In a real app, this would open ImagePicker
-    const mockImage =
-      type === "profile"
-        ? "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300&h=300&fit=crop&crop=face"
-        : "https://images.unsplash.com/photo-1557683316-973673baf926?w=800&h=400&fit=crop";
+    // const mockImage =
+    //   type === "profile"
+    //     ? "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300&h=300&fit=crop&crop=face"
+    //     : "https://images.unsplash.com/photo-1557683316-973673baf926?w=800&h=400&fit=crop";
 
-    setProfileData((prev) => ({
-      ...prev,
-      [type === "profile" ? "profilePicture" : "coverPhoto"]: mockImage,
-    }));
+    handleImagePicker(type);
+  };
+
+  const verifyHandleSave = async () => {
+    if (!profileData.name || !profileData.username) {
+      Alert.alert("Error", "Please fill in all required fields");
+      return;
+    }
+    await estimateSaveAccountFees();
+    setIsModalVisible(true);
+  };
+
+  const estimateSaveAccountFees = async () => {
+    if (!account || !isReady || !contract) return;
+
+    try {
+      const myCall = contract.populate("add_user", [
+        profileData.name,
+        profileData.username,
+        profileData.about,
+        profileData.profilePicture,
+        profileData.coverPhoto,
+      ]);
+
+      const { suggestedMaxFee, unit } = await account.estimateInvokeFee({
+        contractAddress: CONTRACT_ADDRESS,
+        entrypoint: "add_user",
+        calldata: myCall.calldata,
+      });
+
+      const feeToEth = weiToEth(suggestedMaxFee, 8);
+      setEstimatedFee(feeToEth);
+      setPlatformFee("0.00");
+    } catch (err) {
+      console.error("Estimation Failed: ", err);
+      setIsModalVisible(false);
+
+      Toast.show({
+        type: "error",
+        text1: "Failure Predicted",
+        text2: "Please try again later 😢",
+      });
+    }
   };
 
   const handleSave = async () => {
@@ -56,7 +171,14 @@ const ProfileUpdateComponent = ({ onClose }) => {
 
     if (!isReady || !account) return;
     // console.log(account);
-    console.log(profileData);
+    // console.log(profileData);
+
+    Toast.show({
+      type: "info",
+      text1: "Creating Account...",
+      position: "top",
+      autoHide: false,
+    });
 
     const myCall = contract.populate("add_user", [
       profileData.name,
@@ -69,11 +191,25 @@ const ProfileUpdateComponent = ({ onClose }) => {
     try {
       const res = await account.execute(myCall);
       console.log("account added", res.transaction_hash);
+      // Alert.alert("Success", "Profile updated successfully! 🎉");
+      Toast.hide();
+      Toast.show({
+        type: "success",
+        text1: "Account Created!",
+        text2: "Your Profile is now visible 🎉",
+      });
     } catch (err) {
       console.error("TX failed: ", err);
+      Toast.hide();
+      Toast.show({
+        type: "error",
+        text1: "Account Creation Failed",
+        text2: "Please try again later 😢",
+      });
+    } finally {
+      setIsLoading(false);
+      setIsModalVisible(false);
     }
-
-    Alert.alert("Success", "Profile updated successfully! 🎉");
   };
 
   return (
@@ -81,9 +217,11 @@ const ProfileUpdateComponent = ({ onClose }) => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Update Profile</Text>
-        <View style={styles.headerIcon}>
-          <Text style={styles.headerIconText}>✏️</Text>
-        </View>
+        <Pressable onPress={onClose}>
+          <View style={styles.headerIcon}>
+            <Text style={styles.headerIconText}>X</Text>
+          </View>
+        </Pressable>
       </View>
 
       {/* Cover Photo Section */}
@@ -196,12 +334,22 @@ const ProfileUpdateComponent = ({ onClose }) => {
         {/* Save Button */}
         <TouchableOpacity
           style={styles.saveButton}
-          onPress={handleSave}
+          onPress={verifyHandleSave}
           activeOpacity={0.8}
         >
           <Text style={styles.saveButtonText}>Update Profile</Text>
           <Text style={styles.saveButtonIcon}>✨</Text>
         </TouchableOpacity>
+
+        <Toast />
+        <ConfirmPostModal
+          visible={isModalVisible}
+          onConfirm={handleSave}
+          onCancel={() => setIsModalVisible(false)}
+          message=""
+          gasFee={estimatedFee}
+          platformFee={platformFee}
+        />
 
         {/* Preview Card */}
         <View style={styles.previewCard}>
@@ -263,6 +411,7 @@ const styles = StyleSheet.create({
   },
   headerIconText: {
     fontSize: 18,
+    color: "white",
   },
   coverSection: {
     position: "relative",

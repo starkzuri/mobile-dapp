@@ -3,7 +3,7 @@ import { StyleSheet } from "react-native";
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#0a0a0a",
   },
   header: {
     flexDirection: "row",
@@ -11,7 +11,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "#1a1a1a",
     borderBottomWidth: 1,
     borderBottomColor: "#3a3a3a",
   },
@@ -29,7 +29,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#3a3a3a",
+    backgroundColor: "#2a2a2a",
     borderRadius: 20,
     paddingHorizontal: 12,
     flex: 1,
@@ -61,9 +61,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "#1a1a1a",
     borderBottomWidth: 1,
-    borderBottomColor: "#3a3a3a",
+    borderBottomColor: "#2a2a2a",
   },
   userAvatar: {
     width: 40,
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
   },
   createPostInput: {
     flex: 1,
-    backgroundColor: "#3a3a3a",
+    backgroundColor: "#2a2a2a",
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   postContainer: {
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "#1a1a1a",
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,

@@ -14,14 +14,24 @@ const PostHeader = ({ post }) => {
   return (
     <View style={styles.postHeader}>
       <View style={styles.userInfo}>
-        {post.images && (
-          <Image source={{ uri: user?.profile_pic }} style={styles.avatar} />
-        )}
+        <Image
+          source={{
+            uri:
+              user?.profile_pic ||
+              "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png",
+          }}
+          style={styles.avatar}
+        />
+
         <View style={styles.userDetails}>
           <View style={styles.nameContainer}>
             <Text style={styles.userName}>
               {/* {truncateAddress(bigintToLongAddress(post?.caller))} */}
-              {bigintToShortStr(user?.name)}
+              {bigintToShortStr(user?.name) ||
+                `${bigintToLongAddress(post.caller).slice(
+                  0,
+                  4
+                )}...${bigintToLongAddress(post.caller).slice(-4)}`}
             </Text>
             {/* {post.user.verified && (
               <View style={styles.verifiedBadge}>

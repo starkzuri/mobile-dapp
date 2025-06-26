@@ -8,11 +8,18 @@ import {
   StatusBar,
   TouchableOpacity,
   TextInput,
+  SafeAreaView,
   Modal,
   Platform,
+  Animated,
+  PanResponder,
+  ImageBackground,
+  Pressable,
 } from "react-native";
 import { Video } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import CreateReelForm from "@/components/CreateReelForm";
 
 const { height, width } = Dimensions.get("window");
@@ -30,32 +37,83 @@ type Reel = {
   zuri_points: number;
 };
 
-// const reels = [
-//   {
-//     id: "1",
-//     video: {
-//       uri: "https://hambre.infura-ipfs.io/ipfs/QmUpUgkQWoRcjM2vUkYysAHNeQuVZSuhpFsQUh4y26e43b",
-//     },
-//     username: "@felix",
-//     caption: "This is how Stark Zuri rewards its creators.",
-//     sound: "original sound - StarkZuri",
-//   },
-//   {
-//     id: "2",
-//     video: {
-//       uri: "https://hambre.infura-ipfs.io/ipfs/QmTNHQgcjSXLMCoAhNVjs4xc5GpvjTmijMeBakFTQLaZti",
-//     },
-//     username: "@zuriuser",
-//     caption: "Build. Post. Earn. #StarkZuri",
-//     sound: "trending beat - Zuri",
-//   },
-// ];
-
 import { useAppContext } from "@/providers/AppProvider";
 import { useFocusEffect } from "expo-router";
 
+const ActionButton = ({
+  icon,
+  count,
+  onPress,
+  isLiked = false,
+  style = {},
+}) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const [localLiked, setLocalLiked] = useState(isLiked);
+
+  const handlePress = () => {
+    // Animation on press
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 0.8,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    if (icon === "heart" || icon === "heart-outline") {
+      setLocalLiked(!localLiked);
+    }
+    onPress?.();
+  };
+
+  const displayIcon =
+    icon === "heart" || icon === "heart-outline"
+      ? localLiked
+        ? "heart"
+        : "heart-outline"
+      : icon;
+
+  return (
+    <Animated.View
+      style={[
+        styles.actionButton,
+        { transform: [{ scale: scaleAnim }] },
+        style,
+      ]}
+    >
+      <Pressable onPress={handlePress} style={styles.actionButtonInner}>
+        <View style={styles.iconContainer}>
+          <Ionicons
+            name={displayIcon}
+            size={28}
+            color={
+              localLiked && (icon === "heart" || icon === "heart-outline")
+                ? "#ff3040"
+                : "#fff"
+            }
+          />
+        </View>
+        {count > 0 && (
+          <Text style={styles.actionCount}>
+            {count > 999 ? `${(count / 1000).toFixed(1)}k` : count}
+          </Text>
+        )}
+      </Pressable>
+    </Animated.View>
+  );
+};
+
 const ReelItem = ({ item, isVisible }) => {
   const videoRef = useRef(null);
+  const [isCommentFocused, setIsCommentFocused] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const [showControls, setShowControls] = useState(true);
 
   React.useEffect(() => {
     const playOrPause = async () => {
@@ -80,80 +138,211 @@ const ReelItem = ({ item, isVisible }) => {
     playOrPause();
   }, [isVisible]);
 
+  React.useEffect(() => {
+    Animated.timing(slideAnim, {
+      toValue: isVisible ? 1 : 0,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+  }, [isVisible]);
+
   useFocusEffect(() => {
     return () => {
       if (videoRef.current) {
         if (Platform.OS === "web") {
-          videoRef.current.pause?.(); // HTML5 video pause
+          videoRef.current.pause?.();
         } else {
-          videoRef.current.pauseAsync(); // Native pause
+          videoRef.current.pauseAsync();
         }
       }
     };
   });
 
+  const toggleControls = () => {
+    setShowControls(!showControls);
+  };
+
+  const handleSendComment = () => {
+    if (commentText.trim()) {
+      // Handle comment submission
+      console.log("Sending comment:", commentText);
+      setCommentText("");
+      setIsCommentFocused(false);
+    }
+  };
+
   const video = { uri: item.video };
+  const timeAgo = new Date(
+    item?.timestamp.toString() * 1000
+  ).toLocaleDateString();
 
   return (
-    <View style={styles.reelContainer}>
-      <Video
-        ref={videoRef}
-        source={video}
-        style={styles.video}
-        resizeMode="cover"
-        isLooping
-        shouldPlay={isVisible} // play only when visible
-        volume={1.0}
-        muted={false} // explicitly unmuted
-      />
-      <View style={styles.overlay}>
-        <View style={styles.captionContainer}>
-          <Text style={styles.username}>{item.caller}</Text>
-          <Text style={styles.caption}>{item.description}</Text>
-          <Text style={styles.sound}>{item.sound}</Text>
-        </View>
-        <View style={styles.actions}>
-          <TouchableOpacity>
-            <Ionicons name="heart" size={32} color="#1f87fc" />
-          </TouchableOpacity>
-          <TouchableOpacity>
-            <Ionicons
-              name="chatbubble"
-              size={28}
-              color="#fff"
-              style={{ marginTop: 20 }}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity>
-            <Ionicons
-              name="share-social"
-              size={28}
-              color="#fff"
-              style={{ marginTop: 20 }}
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
-      <View style={styles.commentInputContainer}>
-        <TextInput
-          placeholder="Write a comment..."
-          placeholderTextColor="#ccc"
-          style={styles.commentInput}
+    <SafeAreaView style={styles.reelContainer}>
+      <Pressable onPress={toggleControls} style={StyleSheet.absoluteFillObject}>
+        <Video
+          ref={videoRef}
+          source={video}
+          style={styles.video}
+          resizeMode="cover"
+          isLooping
+          shouldPlay={isVisible}
+          volume={1.0}
+          muted={false}
         />
-        <TouchableOpacity style={styles.sendButton}>
-          <Ionicons name="send" size={24} color="#1f87fc" />
-        </TouchableOpacity>
+
+        {/* Gradient Overlays */}
+        <LinearGradient
+          colors={["rgba(0,0,0,0.7)", "transparent"]}
+          style={styles.topGradient}
+        />
+        <LinearGradient
+          colors={["transparent", "rgba(0,0,0,0.8)"]}
+          style={styles.bottomGradient}
+        />
+      </Pressable>
+
+      {/* Main Content Overlay */}
+      {showControls && (
+        <Animated.View
+          style={[
+            styles.overlay,
+            {
+              opacity: slideAnim,
+              transform: [
+                {
+                  translateY: slideAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [50, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          {/* User Info Section */}
+          <View style={styles.userInfoContainer}>
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>
+                  {String(item.caller).charAt(0).toUpperCase()}
+                </Text>
+              </View>
+              <View style={styles.followButton}>
+                <Ionicons name="add" size={12} color="#fff" />
+              </View>
+            </View>
+          </View>
+
+          {/* Content Section */}
+          <View style={styles.contentContainer}>
+            <View style={styles.captionContainer}>
+              <View style={styles.userRow}>
+                <Text style={styles.username}>@user{item.caller}</Text>
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="checkmark" size={12} color="#1f87fc" />
+                </View>
+                <Text style={styles.timestamp}>{timeAgo}</Text>
+              </View>
+
+              <Text style={styles.caption} numberOfLines={3}>
+                {item.description}
+              </Text>
+
+              <View style={styles.soundContainer}>
+                <Ionicons name="musical-notes" size={14} color="#1f87fc" />
+                <Text style={styles.sound}>Original Sound</Text>
+              </View>
+
+              {/* Zuri Points Badge */}
+              <View style={styles.pointsBadge}>
+                <Ionicons name="diamond" size={16} color="#ffd700" />
+                <Text style={styles.pointsText}>{item.zuri_points} Points</Text>
+              </View>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.actions}>
+              <ActionButton
+                icon="heart-outline"
+                count={item.likes}
+                onPress={() => console.log("Like pressed")}
+              />
+              <ActionButton
+                icon="chatbubble-outline"
+                count={item.comments}
+                onPress={() => setIsCommentFocused(true)}
+                style={{ marginTop: 20 }}
+              />
+              <ActionButton
+                icon="arrow-redo-outline"
+                count={item.shares}
+                onPress={() => console.log("Share pressed")}
+                style={{ marginTop: 20 }}
+              />
+              <ActionButton
+                icon="bookmark-outline"
+                count={0}
+                onPress={() => console.log("Save pressed")}
+                style={{ marginTop: 20 }}
+              />
+              <ActionButton
+                icon="ellipsis-horizontal"
+                count={0}
+                onPress={() => console.log("More pressed")}
+                style={{ marginTop: 20 }}
+              />
+            </View>
+          </View>
+        </Animated.View>
+      )}
+
+      {/* Enhanced Comment Input */}
+      <View
+        style={[
+          styles.commentInputContainer,
+          isCommentFocused && styles.commentInputFocused,
+        ]}
+      >
+        <BlurView intensity={80} style={styles.commentBlur}>
+          <View style={styles.commentInputInner}>
+            <TextInput
+              placeholder="Add a comment..."
+              placeholderTextColor="#888"
+              style={styles.commentInput}
+              value={commentText}
+              onChangeText={setCommentText}
+              onFocus={() => setIsCommentFocused(true)}
+              onBlur={() => setIsCommentFocused(false)}
+              multiline
+              maxLength={200}
+            />
+            <TouchableOpacity
+              style={[
+                styles.sendButton,
+                commentText.trim() && styles.sendButtonActive,
+              ]}
+              onPress={handleSendComment}
+            >
+              <Ionicons
+                name="send"
+                size={20}
+                color={commentText.trim() ? "#1f87fc" : "#666"}
+              />
+            </TouchableOpacity>
+          </View>
+        </BlurView>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
 export default function App() {
-  const { contract } = useAppContext();
+  const { contract, isReady, account } = useAppContext();
   const [visibleIndex, setVisibleIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [reels, setReels] = useState<Reel[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const view_reels = () => {
     const myCall = contract.populate("view_reels", []);
@@ -185,49 +374,89 @@ export default function App() {
   }, [contract]);
 
   return (
-    <View style={styles.container}>
-      <StatusBar hidden />
+    <SafeAreaView style={styles.container}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+      />
+
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Reels</Text>
+        <TouchableOpacity style={styles.headerButton}>
+          <Ionicons name="camera-outline" size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
       <FlatList
         data={reels}
-        keyExtractor={(item) => item.reel_id}
+        keyExtractor={(item) => item.reel_id.toString()}
         renderItem={({ item, index }) => (
           <ReelItem item={item} isVisible={index === visibleIndex} />
         )}
         pagingEnabled
         showsVerticalScrollIndicator={false}
-        snapToInterval={height} // snap per screen height
-        decelerationRate="fast" // smooth snap
-        snapToAlignment="start" // align snap to start
+        snapToInterval={height}
+        decelerationRate="fast"
+        snapToAlignment="start"
         onScroll={(e) => {
           const index = Math.round(e.nativeEvent.contentOffset.y / height);
           setVisibleIndex(index);
         }}
-        scrollEventThrottle={16} // for smooth onScroll
+        scrollEventThrottle={16}
         getItemLayout={(_, index) => ({
-          // improves performance & snapping
           length: height,
           offset: height * index,
           index,
         })}
       />
+
       <Modal visible={modalVisible} animationType="slide">
         <CreateReelForm onClose={() => setModalVisible(false)} />
       </Modal>
 
-      <TouchableOpacity
-        onPress={() => setModalVisible(true)}
-        style={styles.createReelButton}
-      >
-        <Ionicons name="add-circle" size={48} color="#1f87fc" />
-      </TouchableOpacity>
-    </View>
+      {/* Enhanced Create Button */}
+      <Animated.View style={[styles.createReelButton, { opacity: fadeAnim }]}>
+        <Pressable
+          onPress={() => setModalVisible(true)}
+          style={styles.createButtonInner}
+        >
+          <LinearGradient
+            colors={["#1f87fc", "#4c9eff"]}
+            style={styles.createButtonGradient}
+          >
+            <Ionicons name="add" size={24} color="#fff" />
+          </LinearGradient>
+        </Pressable>
+      </Animated.View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0a0a0a",
+    backgroundColor: "#000",
+  },
+  header: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 50 : 30,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    zIndex: 10,
+  },
+  headerTitle: {
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: "bold",
+  },
+  headerButton: {
+    padding: 8,
   },
   reelContainer: {
     width,
@@ -241,60 +470,213 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
   },
+  topGradient: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+    zIndex: 1,
+  },
+  bottomGradient: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 200,
+    zIndex: 1,
+  },
   overlay: {
     flex: 1,
     justifyContent: "space-between",
     flexDirection: "row",
     padding: 16,
+    zIndex: 2,
+  },
+  userInfoContainer: {
+    position: "absolute",
+    right: 16,
+    top: height * 0.15,
+  },
+  avatarContainer: {
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#1f87fc",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  avatarText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  followButton: {
+    position: "absolute",
+    bottom: -6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#ff3040",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  contentContainer: {
+    flex: 1,
+    justifyContent: "space-between",
+    flexDirection: "row",
   },
   captionContainer: {
-    width: "80%",
+    width: "75%",
     justifyContent: "flex-end",
-    paddingBottom: 80,
+    paddingBottom: 100,
+  },
+  userRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
   },
   username: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
-    marginBottom: 4,
+  },
+  verifiedBadge: {
+    marginLeft: 6,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  timestamp: {
+    color: "#ccc",
+    fontSize: 12,
+    marginLeft: 8,
   },
   caption: {
     color: "#fff",
-    fontSize: 14,
-    marginBottom: 4,
+    fontSize: 15,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  soundContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
   },
   sound: {
     color: "#1f87fc",
+    fontSize: 13,
+    marginLeft: 4,
+    fontWeight: "500",
+  },
+  pointsBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 215, 0, 0.2)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: "#ffd700",
+  },
+  pointsText: {
+    color: "#ffd700",
     fontSize: 12,
+    fontWeight: "bold",
+    marginLeft: 4,
   },
   actions: {
     justifyContent: "center",
     alignItems: "center",
+    paddingBottom: 100,
+  },
+  actionButton: {
+    alignItems: "center",
+  },
+  actionButtonInner: {
+    alignItems: "center",
+    padding: 8,
+  },
+  iconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  actionCount: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
   },
   commentInputContainer: {
     position: "absolute",
-    bottom: 20,
-    left: 10,
-    right: 80, // changed from 60 to 80 to avoid overlap
-    backgroundColor: "#1a1a1a",
+    bottom: 30,
+    left: 16,
+    right: 90,
+    zIndex: 3,
+  },
+  commentInputFocused: {
+    bottom: 40,
+  },
+  commentBlur: {
     borderRadius: 25,
+    overflow: "hidden",
+  },
+  commentInputInner: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 15,
-    zIndex: 1, // ensures it's not hidden behind other components
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
   },
   commentInput: {
     flex: 1,
     color: "#fff",
-    height: 40,
+    fontSize: 14,
+    maxHeight: 60,
   },
   sendButton: {
-    paddingLeft: 10,
+    paddingLeft: 12,
+    padding: 8,
+  },
+  sendButtonActive: {
+    backgroundColor: "rgba(31, 135, 252, 0.2)",
+    borderRadius: 16,
   },
   createReelButton: {
     position: "absolute",
-    bottom: 20,
+    bottom: 30,
     right: 20,
-    zIndex: 2, // keep it above the comment box
+    zIndex: 4,
+  },
+  createButtonInner: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  createButtonGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

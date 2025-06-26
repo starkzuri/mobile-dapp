@@ -352,3 +352,28 @@ export function htmlToMarkdown(html: string): string {
 
   return markdown.trim();
 }
+
+export const weiToEth = (wei, decimals = 6) => {
+  const eth = Number(BigInt(wei)) / 1e18;
+  return eth.toFixed(decimals);
+};
+
+export const toDecimalString = (num) => {
+  return Number(num)
+    .toFixed(18)
+    .replace(/\.?0+$/, "");
+};
+
+export const fetchEthToUsd = async () => {
+  try {
+    const response = await fetch(
+      "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd"
+    );
+    const data = await response.json();
+    const ethPriceInUsd = data.ethereum.usd;
+    return ethPriceInUsd; // Number, e.g., 3425.12
+  } catch (error) {
+    console.error("Failed to fetch ETH price:", error);
+    return null;
+  }
+};

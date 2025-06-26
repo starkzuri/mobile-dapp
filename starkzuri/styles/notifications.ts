@@ -2,119 +2,66 @@ import { StyleSheet } from "react-native";
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#0a0a0a",
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#2a2a2a",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#3a3a3a",
-  },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  backButtonText: {
-    color: "#1f87fc",
-    fontSize: 24,
+    borderBottomColor: "#1a1a1a",
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "bold",
     color: "white",
   },
   markAllButton: {
-    padding: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: "#1f87fc20",
   },
   markAllText: {
     color: "#1f87fc",
     fontSize: 14,
-    fontWeight: "500",
+    fontWeight: "600",
   },
-  filterContainer: {
-    flexDirection: "row",
-    backgroundColor: "#2a2a2a",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  filterTab: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 16,
-    borderRadius: 20,
-    backgroundColor: "#3a3a3a",
-  },
-  activeFilterTab: {
-    backgroundColor: "#1f87fc",
-  },
-  filterText: {
-    color: "#8e8e93",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  activeFilterText: {
-    color: "white",
-  },
-  unreadCount: {
-    backgroundColor: "#ff4757",
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 8,
-  },
-  unreadCountText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  notificationsList: {
+  content: {
     flex: 1,
   },
-  notificationContainer: {
-    backgroundColor: "#2a2a2a",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#3a3a3a",
+  scrollView: {
+    flex: 1,
   },
-  unreadNotification: {
-    backgroundColor: "#252a3a",
+  notificationCard: {
+    backgroundColor: "#111111",
+    marginHorizontal: 16,
+    marginVertical: 4,
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#1a1a1a",
+  },
+  unreadCard: {
+    backgroundColor: "#151515",
+    borderColor: "#1f87fc30",
   },
   notificationContent: {
     flexDirection: "row",
+    padding: 16,
     alignItems: "flex-start",
   },
-  notificationLeft: {
+  avatarContainer: {
     position: "relative",
     marginRight: 12,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-  },
-  systemIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#3a3a3a",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  systemIcon: {
-    fontSize: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#333",
   },
   iconBadge: {
     position: "absolute",
@@ -123,140 +70,65 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "#1f87fc",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "#2a2a2a",
+    borderColor: "#111111",
   },
-  iconBadgeText: {
-    fontSize: 10,
-  },
-  notificationBody: {
+  messageContainer: {
     flex: 1,
+    paddingRight: 8,
   },
-  notificationText: {
+  messageHeader: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 4,
   },
-  userName: {
-    color: "white",
-    fontSize: 15,
-    fontWeight: "600",
+  usernameContainer: {
+    flexDirection: "row",
+    alignItems: "center",
   },
-  notificationMessage: {
-    color: "#e0e0e0",
+  username: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "white",
+    marginRight: 4,
+  },
+  timestamp: {
+    color: "#888",
+    fontSize: 14,
+  },
+  message: {
+    color: "#ccc",
     fontSize: 15,
     lineHeight: 20,
+    marginBottom: 8,
   },
-  amountContainer: {
-    alignSelf: "flex-start",
-    backgroundColor: "#1f87fc",
+  action: {
+    color: "#ddd",
+  },
+  pointsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ffd70020",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    marginVertical: 4,
+    alignSelf: "flex-start",
   },
-  amountText: {
-    color: "white",
+  pointsText: {
+    color: "#ffd700",
     fontSize: 12,
-    fontWeight: "bold",
-  },
-  timeText: {
-    color: "#8e8e93",
-    fontSize: 13,
-    marginTop: 4,
+    fontWeight: "600",
+    marginLeft: 4,
   },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: "#1f87fc",
-    marginLeft: 8,
     marginTop: 4,
-  },
-  actionButtonsContainer: {
-    flexDirection: "row",
-    marginTop: 12,
-    marginLeft: 60,
-    gap: 12,
-  },
-  followBackButton: {
-    backgroundColor: "#1f87fc",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    flex: 1,
-    alignItems: "center",
-  },
-  followBackText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  viewProfileButton: {
-    backgroundColor: "transparent",
-    borderWidth: 1,
-    borderColor: "#1f87fc",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    flex: 1,
-    alignItems: "center",
-  },
-  viewProfileText: {
-    color: "#1f87fc",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 80,
-  },
-  emptyStateIcon: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
-  emptyStateTitle: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  emptyStateText: {
-    color: "#8e8e93",
-    fontSize: 14,
-    textAlign: "center",
-  },
-  quickActions: {
-    flexDirection: "row",
-    backgroundColor: "#2a2a2a",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#3a3a3a",
-    gap: 12,
-  },
-  quickActionButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#3a3a3a",
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  quickActionIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
-  quickActionText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "500",
   },
 });
 

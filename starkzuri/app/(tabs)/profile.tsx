@@ -19,11 +19,13 @@ import {
   Star,
   Zap,
 } from "lucide-react-native";
+import Toast from "react-native-toast-message";
 import RewardCards from "@/components/RewardCard";
 import { useAppContext } from "@/providers/AppProvider";
 import { bigintToShortStr } from "@/utils/AppUtils";
 import MiniFunctions from "@/utils/MiniFunctions";
 import ProfileUpdateComponent from "@/components/UpdateUser";
+import ConfirmPostModal from "@/components/PostConfirmationModal";
 
 const { width } = Dimensions.get("window");
 
@@ -44,7 +46,9 @@ type User = {
 const UserProfile = () => {
   const { account, isReady, contract } = useAppContext();
   const user = MiniFunctions(account?.address?.toString());
+  // console.log(account);
   const [modalVisible, setModalVisible] = useState(false);
+
   // console.log(user);
   const [isFollowing, setIsFollowing] = useState(false);
 
@@ -186,7 +190,7 @@ const UserProfile = () => {
             </TouchableOpacity>
 
             <Modal visible={modalVisible} animationType="slide">
-              <ProfileUpdateComponent onClose={null} />
+              <ProfileUpdateComponent onClose={() => setModalVisible(false)} />
             </Modal>
 
             {/* <TouchableOpacity style={styles.messageButton}>

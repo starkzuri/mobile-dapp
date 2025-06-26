@@ -38,7 +38,7 @@ export default function Login() {
     const user = JSON.parse(encryptedKey);
     // console.log(user);
 
-    const response = await fetch("http://192.168.137.165:4000/login", {
+    const response = await fetch("https://relayer-xsew.onrender.com/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

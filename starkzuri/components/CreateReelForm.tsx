@@ -8,37 +8,191 @@ import {
   ScrollView,
   Image,
   Alert,
+  ImageBackground,
+  ActivityIndicator,
+  SafeAreaView,
   Dimensions,
 } from "react-native";
 import { launchImageLibrary } from "react-native-image-picker";
 
+import * as ImagePicker from "expo-image-picker";
+import { uploadFile } from "@/utils/Infura";
+import * as MediaLibrary from "expo-media-library";
+import * as VideoThumbnails from "expo-video-thumbnails";
+import { useAppContext } from "@/providers/AppProvider";
+import MiniFunctions from "@/utils/MiniFunctions";
+import ConfirmPostModal from "./PostConfirmationModal";
+import Toast from "react-native-toast-message";
+import { CONTRACT_ADDRESS } from "@/providers/abi";
+import { weiToEth } from "@/utils/AppUtils";
+
 const { width } = Dimensions.get("window");
 
 const CreateReelForm = ({ onClose }) => {
+  const { account, isReady, contract, address } = useAppContext();
   const [videoUri, setVideoUri] = useState(null);
   const [description, setDescription] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [videoUrl, setVideoUrl] = useState("");
+  const user = MiniFunctions(address?.toString());
+  const [isLoading, setIsLoading] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [estimatedFee, setEstimatedFee] = useState("");
+  const [platformFee, setPlatformFee] = useState("");
 
-  const selectVideo = () => {
-    const options = {
-      mediaType: "video",
-      videoQuality: "high",
-      durationLimit: 60,
-    };
+  const handleVideoPicker = () => {
+    Alert.alert("Select Video", "choose an option", [
+      { text: "Camera", onPress: () => selectVideo("camera") },
+      { text: "gallery", onPress: () => selectVideo("gallery") },
+    ]);
+  };
 
-    launchImageLibrary(options, (response) => {
-      if (response.didCancel || response.error) {
+  const selectVideo = async (source: "camera" | "gallery") => {
+    // const options = {
+    //   mediaType: "video",
+    //   videoQuality: "high",
+    //   durationLimit: 60,
+    // };
+
+    const permissionResult =
+      source === "camera"
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      Alert.alert("Permission required", "you still need to allow access");
+      return;
+    }
+
+    const uploadedUrls: string[] = [];
+
+    const result =
+      source === "camera"
+        ? await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+            quality: 0.8,
+            videoMaxDuration: 60,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+            videoMaxDuration: 60,
+            quality: 1,
+          });
+
+    if (!result.canceled && result.assets.length > 0) {
+      const asset = result.assets[0];
+
+      // validate duration(recommended)
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission required", "Media Library access is required.");
         return;
       }
 
-      if (response.assets && response.assets[0]) {
-        setVideoUri(response.assets[0].uri);
+      const savedAsset = await MediaLibrary.createAssetAsync(asset.uri);
+      const assetInfo = await MediaLibrary.getAssetInfoAsync(savedAsset.id);
+
+      console.log("Video duration:", assetInfo.duration); // in seconds
+
+      if (assetInfo.duration > 60) {
+        Alert.alert("Too long", "Video must be 60 seconds or less.");
+        return;
       }
-    });
+
+      const { uri: thumbnailUri } = await VideoThumbnails.getThumbnailAsync(
+        asset.uri,
+        {
+          time: 1000, // Get thumbnail at 1 second mark
+        }
+      );
+
+      Toast.show({
+        type: "info",
+        text1: "uploading video",
+        position: "top",
+        autoHide: false,
+      });
+
+      try {
+        setIsLoading(true);
+
+        const file = {
+          uri: asset.uri,
+          name: asset.fileName || `reel_${Date.now()}.mp4`,
+          type: "video/mp4",
+        };
+
+        const uploadedUrl = await uploadFile(file);
+        if (uploadedUrl) {
+          setVideoUrl(uploadedUrl);
+          setVideoUri(thumbnailUri);
+          Toast.hide();
+
+          console.log("Reel uploaded to:", uploadedUrl);
+          console.log("Thumbnail preview:", thumbnailUri);
+          console.log("video loading ", isLoading);
+        } else {
+          Toast.hide();
+          Toast.show({
+            type: "error",
+            text1: "Upload failed",
+            text2: "Try uploading again later",
+          });
+        }
+      } catch (error) {
+        setIsLoading(false);
+        Toast.hide();
+        Toast.show({
+          type: "error",
+          text1: "Upload Failed",
+          text2: "please try again later",
+        });
+        setIsLoading(false);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const verifyUploadVideo = async () => {
+    if (!videoUrl) {
+      Alert.alert("Missing Video", "Please select a video to upload");
+      return;
+    }
+
+    if (description.trim() === "") {
+      Alert.alert(
+        "Missing Description",
+        "Please add a description for your reel"
+      );
+      return;
+    }
+    await estimateGasFees();
+    setIsModalVisible(true);
+  };
+
+  const estimateGasFees = async () => {
+    if (!isReady || !account || !contract) return;
+
+    const myCall = contract.populate("create_reel", [description, videoUrl]);
+
+    try {
+      const { suggestedMaxFee, unit } = await account.estimateInvokeFee({
+        contractAddress: CONTRACT_ADDRESS,
+        entrypoint: "create_reel",
+        calldata: myCall.calldata,
+      });
+
+      const feeToEth = weiToEth(suggestedMaxFee, 0);
+      setEstimatedFee(feeToEth);
+      setPlatformFee("0.00");
+    } catch (error) {
+      console.log("some error occured ", error);
+    }
   };
 
   const handleSubmit = async () => {
-    if (!videoUri) {
+    if (!videoUrl) {
       Alert.alert("Missing Video", "Please select a video to upload");
       return;
     }
@@ -51,16 +205,38 @@ const CreateReelForm = ({ onClose }) => {
       return;
     }
 
-    setIsUploading(true);
+    if (!isReady || !account || !contract) return;
+    Toast.show({
+      type: "info",
+      text1: "Processing Transaction...",
+      position: "top",
+      autoHide: false,
+    });
 
-    // Simulate upload process
-    setTimeout(() => {
-      setIsUploading(false);
-      Alert.alert("Success!", "Your reel has been created successfully");
-      // Reset form
-      setVideoUri(null);
-      setDescription("");
-    }, 2000);
+    const myCall = contract.populate("create_reel", [description, videoUrl]);
+
+    try {
+      const res = await account.execute(myCall);
+      Alert.alert("video uploaded successfully");
+      console.log("reel created", res.transaction_hash);
+      Toast.hide();
+      Toast.show({
+        type: "success",
+        text1: "reel uploaded!",
+        text2: "Your reel is now live 🎉",
+      });
+    } catch (err) {
+      // Alert.alert("error upoading video");
+      console.error("TX failed: ", err);
+      Toast.hide();
+      Toast.show({
+        type: "error",
+        text1: "Reel upload Failed",
+        text2: "Please try again later 😢",
+      });
+    } finally {
+      setIsModalVisible(false);
+    }
   };
 
   return (
@@ -75,7 +251,9 @@ const CreateReelForm = ({ onClose }) => {
         <View style={styles.headerRight}>
           <Image
             source={{
-              uri: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
+              uri:
+                user.profile_pic ||
+                "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png",
             }}
             style={styles.avatar}
           />
@@ -90,17 +268,48 @@ const CreateReelForm = ({ onClose }) => {
             styles.uploadContainer,
             videoUri && styles.uploadContainerWithVideo,
           ]}
-          onPress={selectVideo}
+          onPress={handleVideoPicker}
           activeOpacity={0.8}
         >
-          {videoUri ? (
-            <View style={styles.videoPreview}>
+          {/* {videoUri ? (
+            <ImageBackground
+              source={{ uri: videoUri }}
+              style={styles.videoPreview}
+            >
               <View style={styles.videoPlaceholder}>
                 <Text style={styles.videoIcon}>▶️</Text>
                 <Text style={styles.videoText}>Video Selected</Text>
                 <Text style={styles.changeVideoText}>Tap to change</Text>
               </View>
+            </ImageBackground>
+          ) : (
+            <View style={styles.uploadPlaceholder}>
+              <View style={styles.uploadIcon}>
+                <Text style={styles.uploadIconText}>📹</Text>
+              </View>
+              <Text style={styles.uploadText}>Tap to select video</Text>
+              <Text style={styles.uploadSubtext}>
+                MP4, MOV up to 60 seconds
+              </Text>
             </View>
+          )} */}
+
+          {isLoading ? (
+            <View style={[styles.videoPreview, styles.loadingOverlay]}>
+              <ActivityIndicator size="large" color="#fff" />
+              <Text style={styles.loadingText}>Uploading video...</Text>
+            </View>
+          ) : videoUri ? (
+            <ImageBackground
+              source={{ uri: videoUri }}
+              style={styles.videoPreview}
+            >
+              <View style={styles.videoPlaceholder}>
+                <Text style={styles.videoIcon}>▶️</Text>
+                <Text style={styles.videoText}>Video Selected</Text>
+                <Text style={styles.changeVideoText}>Tap to change</Text>
+              </View>
+            </ImageBackground>
           ) : (
             <View style={styles.uploadPlaceholder}>
               <View style={styles.uploadIcon}>
@@ -157,7 +366,7 @@ const CreateReelForm = ({ onClose }) => {
           styles.submitButton,
           isUploading && styles.submitButtonDisabled,
         ]}
-        onPress={handleSubmit}
+        onPress={verifyUploadVideo}
         disabled={isUploading}
         activeOpacity={0.8}
       >
@@ -165,6 +374,17 @@ const CreateReelForm = ({ onClose }) => {
           {isUploading ? "Creating Reel..." : "Create Reel"}
         </Text>
       </TouchableOpacity>
+
+      <Toast />
+
+      <ConfirmPostModal
+        visible={isModalVisible}
+        onConfirm={handleSubmit}
+        onCancel={() => setIsModalVisible(false)}
+        message=""
+        gasFee={estimatedFee}
+        platformFee={platformFee}
+      />
 
       <View style={styles.bottomSpacing} />
     </ScrollView>
@@ -349,6 +569,19 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 40,
+  },
+  loadingOverlay: {
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)", // semi-transparent overlay
+    borderRadius: 12,
+  },
+
+  loadingText: {
+    marginTop: 10,
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "500",
   },
 });
 

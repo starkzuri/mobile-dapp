@@ -238,7 +238,7 @@ const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
       isReady,
       viewUser,
     }),
-    [address, contract, provider, account, isReady]
+    [address, contract, provider, account, isReady, viewUser]
   );
 
   return <AppContext.Provider value={appValue}>{children}</AppContext.Provider>;

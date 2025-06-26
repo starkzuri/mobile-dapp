@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { AppProvider } from "@/providers/AppProvider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { View, ActivityIndicator } from "react-native";
+import Toast from "react-native-toast-message";
 
 export default function RootLayout() {
   const router = useRouter();
@@ -51,7 +52,8 @@ export default function RootLayout() {
           options={{ presentation: "modal" }}
         />
       </Stack>
-      <StatusBar style="light" />
+      <Toast />
+      <StatusBar style="dark" />
     </AppProvider>
   );
 }

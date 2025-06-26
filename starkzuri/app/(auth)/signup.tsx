@@ -33,7 +33,7 @@ export default function Signup() {
 
     try {
       const response = await fetch(
-        "http://192.168.176.35:4000/create_account",
+        "https://relayer-xsew.onrender.com/create_account",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

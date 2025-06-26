@@ -175,9 +175,9 @@ const SinglePostPage = () => {
     })
       .then((res) => {
         let val = contract.callData.parse("view_comments", res?.result ?? res);
-        console.log(val);
+        // console.log(val);
         setCommentList(val.reverse());
-        console.log(val);
+        // console.log(val);
       })
       .catch((err) => {
         console.error("Error: ", err);
@@ -273,10 +273,13 @@ const SinglePostPage = () => {
           </Markdown>
         </View>
 
+        {/* {console.log(posts.images)} */}
+
         {/* Images */}
         <View style={styles.imagesContainer}>
           <View style={styles.imageGrid}>
-            {posts?.images.split(",").map((image, index) => (
+            {/* {console.log(posts?.images)} */}
+            {posts?.images.split(" ").map((image, index) => (
               <Image
                 key={index}
                 source={{ uri: image.trim() }}
@@ -302,7 +305,7 @@ const SinglePostPage = () => {
             showsVerticalScrollIndicator={false}
           />
         </View> */}
-        <CommentComponent postId={1} />
+        <CommentComponent postId={single_post} />
       </ScrollView>
 
       {/* Comment Input */}

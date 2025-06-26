@@ -23,7 +23,7 @@ const PostContent = ({ post, handleLike }) => {
       </Markdown>
       {post.images && (
         <Image
-          source={{ uri: post?.images.split(",")[0] }}
+          source={{ uri: post?.images.split(" ")[0] }}
           style={styles.postImage}
         />
       )}
