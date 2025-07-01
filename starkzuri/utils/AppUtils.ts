@@ -370,8 +370,8 @@ export const fetchEthToUsd = async () => {
       "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd"
     );
     const data = await response.json();
-    const ethPriceInUsd = data.ethereum.usd;
-    return ethPriceInUsd; // Number, e.g., 3425.12
+    const ethPriceInUsd = data?.ethereum?.usd;
+    return ethPriceInUsd || 0.0; // Number, e.g., 3425.12
   } catch (error) {
     console.error("Failed to fetch ETH price:", error);
     return null;

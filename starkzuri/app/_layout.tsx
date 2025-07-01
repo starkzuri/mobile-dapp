@@ -48,6 +48,10 @@ export default function RootLayout() {
           options={{ presentation: "modal" }}
         />
         <Stack.Screen
+          name="modals/single_reel"
+          options={{ presentation: "modal" }}
+        />
+        <Stack.Screen
           name="modals/PostComponent"
           options={{ presentation: "modal" }}
         />

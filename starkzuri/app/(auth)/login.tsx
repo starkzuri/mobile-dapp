@@ -7,6 +7,7 @@ import {
   StyleSheet,
   StatusBar,
   Image,
+  ActivityIndicator,
   Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -18,6 +19,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const storeWalletInfo = async (privateKey, accountAddress) => {
     try {
@@ -35,6 +37,8 @@ export default function Login() {
       return;
     }
 
+    setIsLoading(true);
+
     const user = JSON.parse(encryptedKey);
     // console.log(user);
 
@@ -49,16 +53,19 @@ export default function Login() {
     });
 
     const data = await response.json();
-    console.log(data);
+    // console.log(data);
     if (data.message == "invalid_pass") {
       setPasswordError("invalid password");
+      setIsLoading(false);
     } else if (data.message == "account_not_found") {
       setEmailError("email not found, recover?");
+      setIsLoading(false);
     } else {
       await storeWalletInfo(
         data?.loggedInUser?.privateKey,
         data?.loggedInUser?.accountAddress
       );
+      setIsLoading(false);
       router.push("/");
     }
     if (!response.ok) throw new Error(data.error || "something happened");
@@ -141,9 +148,16 @@ export default function Login() {
           ) : null}
         </View>
 
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-          <Text style={styles.loginButtonText}>Login</Text>
-        </TouchableOpacity>
+        {
+          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+            {/* <Text style={styles.loginButtonText}>Login</Text> */}
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.loginButtonText}>Login</Text>
+            )}
+          </TouchableOpacity>
+        }
 
         <TouchableOpacity
           style={styles.signupLink}

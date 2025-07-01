@@ -1,348 +1,508 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
+  StyleSheet,
   ScrollView,
   TouchableOpacity,
-  StyleSheet,
+  Animated,
   StatusBar,
-  SafeAreaView,
-  Switch,
   Alert,
+  Dimensions,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import styles from "../../styles/more";
+import { Redirect, useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SafeAreaView } from "react-native-safe-area-context";
+import MiniFunctions from "@/utils/MiniFunctions";
+import { useAppContext } from "@/providers/AppProvider";
 
-const StarkZuriMorePage = () => {
-  const [darkMode, setDarkMode] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(true);
-  const [emailNotifications, setEmailNotifications] = useState(false);
-  const [profileVisibility, setProfileVisibility] = useState(true);
-  const [activityStatus, setActivityStatus] = useState(true);
+// Icon components (you can replace these with react-native-vector-icons)
+const IconWrapper = ({ children, color, size = 24 }) => (
+  <View style={[styles.iconContainer, { backgroundColor: color + "20" }]}>
+    <Text style={[styles.iconText, { color, fontSize: size }]}>{children}</Text>
+  </View>
+);
 
-  // Mock wallet data
-  const walletData = {
-    balance: "2,847.5",
-    pendingTips: "124.8",
-    currency: "SZ",
-  };
+const StarkZuriMoreTab = () => {
+  const [balance, setBalance] = useState(2847.56);
+  const [earnings, setEarnings] = useState(847.56);
+  const [recentReward, setRecentReward] = useState(null);
+  const { account, address, contract } = useAppContext();
+  const router = useRouter();
+
+  const glowAnimation = useRef(new Animated.Value(0)).current;
+  const pulseAnimation = useRef(new Animated.Value(1)).current;
+  const rewardAnimation = useRef(new Animated.Value(0)).current;
+  const user = MiniFunctions(address);
+  // console.log(user);
+
+  // Animate glow effect
+  useEffect(() => {
+    const glowSequence = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnimation, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: false,
+        }),
+        Animated.timing(glowAnimation, {
+          toValue: 0,
+          duration: 2000,
+          useNativeDriver: false,
+        }),
+      ])
+    );
+    glowSequence.start();
+
+    return () => glowSequence.stop();
+  }, []);
+
+  // Simulate recent rewards
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     const rewards = [12.5, 8.3, 15.7, 6.2, 23.1];
+  //     const randomReward = rewards[Math.floor(Math.random() * rewards.length)];
+  //     setRecentReward(randomReward);
+
+  //     // Animate reward popup
+  //     Animated.sequence([
+  //       Animated.timing(rewardAnimation, {
+  //         toValue: 1,
+  //         duration: 500,
+  //         useNativeDriver: true,
+  //       }),
+  //       Animated.delay(2500),
+  //       Animated.timing(rewardAnimation, {
+  //         toValue: 0,
+  //         duration: 500,
+  //         useNativeDriver: true,
+  //       }),
+  //     ]).start(() => setRecentReward(null));
+
+  //     // Pulse effect
+  //     Animated.sequence([
+  //       Animated.timing(pulseAnimation, {
+  //         toValue: 1.05,
+  //         duration: 300,
+  //         useNativeDriver: true,
+  //       }),
+  //       Animated.timing(pulseAnimation, {
+  //         toValue: 1,
+  //         duration: 300,
+  //         useNativeDriver: true,
+  //       }),
+  //     ]).start();
+  //   }, 8000);
+
+  //   return () => clearInterval(interval);
+  // }, []);
+
+  const menuItems = [
+    // {
+    //   icon: "👥",
+    //   title: "Invite Friends",
+    //   subtitle: "Earn 50 $ZURI per referral",
+    //   color: "#1f87fc",
+    // },
+    // {
+    //   icon: "👑",
+    //   title: "Upgrade to Premium",
+    //   subtitle: "Unlock exclusive features",
+    //   color: "#ffd700",
+    //   badge: "PRO",
+    // },
+    // {
+    //   icon: "⚙️",
+    //   title: "App Settings",
+    //   subtitle: "Notifications, language, theme",
+    //   color: "#8b5cf6",
+    // },
+    // {
+    //   icon: "❓",
+    //   title: "Help & Support",
+    //   subtitle: "FAQs and contact support",
+    //   color: "#10b981",
+    // },
+    // {
+    //   icon: "📄",
+    //   title: "Whitepaper / Tokenomics",
+    //   subtitle: "Learn about $ZURI economics",
+    //   color: "#f59e0b",
+    // },
+    // {
+    //   icon: "🛡️",
+    //   title: "Community Guidelines",
+    //   subtitle: "Rules and best practices",
+    //   color: "#ef4444",
+    // },
+    // {
+    //   icon: "🐛",
+    //   title: "Report Bug / Feedback",
+    //   subtitle: "Help us improve Stark Zuri",
+    //   color: "#06b6d4",
+    // },
+    {
+      icon: "🚪↩️",
+      title: "Log Out",
+      subtitle: "Log out of stark zuri",
+      color: "#ef4444",
+    },
+  ];
 
   const handleWithdraw = () => {
     Alert.alert(
-      "Withdraw Tips",
-      `Withdraw ${walletData.pendingTips} SZ to your external wallet?`,
+      "Withdraw $ZURI",
+      "Your tokens will be sent to your connected wallet. This may take a few minutes.",
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Withdraw", onPress: () => console.log("Withdrawing...") },
+        { text: "Confirm", onPress: () => console.log("Withdrawal initiated") },
       ]
     );
   };
 
-  const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Logout",
-        style: "destructive",
-        onPress: () => console.log("Logging out..."),
-      },
-    ]);
+  const handleLogOut = async () => {
+    console.log("logging out");
+    await AsyncStorage.multiRemove(["privateKey", "accountAddress"]);
+
+    return router.replace("/login");
+  };
+  const handleReportBug = () => {};
+
+  const handleMenuItemPress = (title) => {
+    console.log(title);
+    switch (title) {
+      case "Log Out":
+        handleLogOut();
+        break;
+      case "Report Bug / Feedback":
+        handleReportBug();
+        break;
+    }
   };
 
-  const handleFeedback = (type: any) => {
-    Alert.alert(
-      type === "bug" ? "Report Bug" : "Contact Support",
-      type === "bug"
-        ? "Please describe the bug you encountered. We'll investigate and fix it as soon as possible."
-        : "How can we help you? Our support team will get back to you within 24 hours.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Continue",
-          onPress: () => console.log(`Opening ${type} form...`),
-        },
-      ]
-    );
-  };
-
-  const MenuSection = ({ title, children }) => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.sectionContent}>{children}</View>
-    </View>
-  );
-
-  const MenuItem = ({
-    icon,
-    title,
-    subtitle,
-    onPress,
-    rightElement,
-    iconColor = "#9CA3AF",
-  }) => (
-    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
-      <View style={styles.menuItemLeft}>
-        <View
-          style={[styles.iconContainer, { backgroundColor: `${iconColor}20` }]}
-        >
-          <Ionicons name={icon} size={20} color={iconColor} />
-        </View>
-        <View style={styles.menuItemText}>
-          <Text style={styles.menuItemTitle}>{title}</Text>
-          {subtitle && <Text style={styles.menuItemSubtitle}>{subtitle}</Text>}
-        </View>
-      </View>
-      {rightElement || (
-        <Ionicons name="chevron-forward" size={20} color="#6B7280" />
-      )}
-    </TouchableOpacity>
-  );
-
-  const SettingItem = ({
-    icon,
-    title,
-    subtitle,
-    value,
-    onValueChange,
-    iconColor = "#9CA3AF",
-  }) => (
-    <View style={styles.menuItem}>
-      <View style={styles.menuItemLeft}>
-        <View
-          style={[styles.iconContainer, { backgroundColor: `${iconColor}20` }]}
-        >
-          <Ionicons name={icon} size={20} color={iconColor} />
-        </View>
-        <View style={styles.menuItemText}>
-          <Text style={styles.menuItemTitle}>{title}</Text>
-          {subtitle && <Text style={styles.menuItemSubtitle}>{subtitle}</Text>}
-        </View>
-      </View>
-      <Switch
-        value={value}
-        onValueChange={onValueChange}
-        trackColor={{ false: "#374151", true: "#1f87fc40" }}
-        thumbColor={value ? "#1f87fc" : "#9CA3AF"}
-      />
-    </View>
-  );
+  const glowColor = glowAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["rgba(31, 135, 252, 0.1)", "rgba(31, 135, 252, 0.3)"],
+  });
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1F2937" />
+      <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>More</Text>
-        <View style={styles.headerRight} />
-      </View>
-
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Wallet Section */}
-        <MenuSection title="Wallet">
-          <View style={styles.walletCard}>
-            <View style={styles.walletHeader}>
-              <View style={styles.walletIcon}>
-                <Ionicons name="wallet" size={24} color="#1f87fc" />
-              </View>
-              <View style={styles.walletInfo}>
-                <Text style={styles.walletBalance}>
-                  {walletData.balance} {walletData.currency}
-                </Text>
-                <Text style={styles.walletLabel}>Total Balance</Text>
-              </View>
-            </View>
-
-            <View style={styles.walletStats}>
-              <View style={styles.walletStat}>
-                <Text style={styles.walletStatValue}>
-                  {walletData.pendingTips} {walletData.currency}
-                </Text>
-                <Text style={styles.walletStatLabel}>Pending Tips</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.withdrawButton}
-                onPress={handleWithdraw}
-              >
-                <Ionicons name="arrow-up" size={16} color="#fff" />
-                <Text style={styles.withdrawButtonText}>Withdraw</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <MenuItem
-            icon="card"
-            title="Payment Methods"
-            subtitle="Manage your payment options"
-            onPress={() => console.log("Payment methods")}
-            iconColor="#10B981"
-          />
-          <MenuItem
-            icon="time"
-            title="Transaction History"
-            subtitle="View all your transactions"
-            onPress={() => console.log("Transaction history")}
-            iconColor="#8B5CF6"
-          />
-        </MenuSection>
-
-        {/* Theme Section */}
-        <MenuSection title="Appearance">
-          <SettingItem
-            icon="moon"
-            title="Dark Mode"
-            subtitle="Toggle between light and dark theme"
-            value={darkMode}
-            onValueChange={setDarkMode}
-            iconColor="#F59E0B"
-          />
-        </MenuSection>
-
-        {/* Notifications Section */}
-        <MenuSection title="Notifications">
-          <SettingItem
-            icon="notifications"
-            title="Push Notifications"
-            subtitle="Receive notifications on your device"
-            value={pushNotifications}
-            onValueChange={setPushNotifications}
-            iconColor="#EF4444"
-          />
-          <SettingItem
-            icon="mail"
-            title="Email Notifications"
-            subtitle="Receive updates via email"
-            value={emailNotifications}
-            onValueChange={setEmailNotifications}
-            iconColor="#3B82F6"
-          />
-          <MenuItem
-            icon="settings"
-            title="Notification Preferences"
-            subtitle="Customize what notifications you receive"
-            onPress={() => console.log("Notification preferences")}
-            iconColor="#8B5CF6"
-          />
-        </MenuSection>
-
-        {/* Privacy Section */}
-        <MenuSection title="Privacy & Security">
-          <SettingItem
-            icon="eye"
-            title="Profile Visibility"
-            subtitle="Make your profile visible to others"
-            value={profileVisibility}
-            onValueChange={setProfileVisibility}
-            iconColor="#06B6D4"
-          />
-          <SettingItem
-            icon="radio-button-on"
-            title="Activity Status"
-            subtitle="Show when you're active"
-            value={activityStatus}
-            onValueChange={setActivityStatus}
-            iconColor="#10B981"
-          />
-          <MenuItem
-            icon="shield-checkmark"
-            title="Two-Factor Authentication"
-            subtitle="Add an extra layer of security"
-            onPress={() => console.log("2FA settings")}
-            iconColor="#F59E0B"
-          />
-          <MenuItem
-            icon="lock-closed"
-            title="Privacy Settings"
-            subtitle="Control who can see your content"
-            onPress={() => console.log("Privacy settings")}
-            iconColor="#8B5CF6"
-          />
-        </MenuSection>
-
-        {/* Support Section */}
-        <MenuSection title="Feedback & Support">
-          <MenuItem
-            icon="bug"
-            title="Report a Bug"
-            subtitle="Help us improve by reporting issues"
-            onPress={() => handleFeedback("bug")}
-            iconColor="#EF4444"
-          />
-          <MenuItem
-            icon="chatbubbles"
-            title="Contact Support"
-            subtitle="Get help from our support team"
-            onPress={() => handleFeedback("support")}
-            iconColor="#3B82F6"
-          />
-          <MenuItem
-            icon="star"
-            title="Rate the App"
-            subtitle="Share your experience with others"
-            onPress={() => console.log("Rate app")}
-            iconColor="#F59E0B"
-          />
-          <MenuItem
-            icon="bulb"
-            title="Feature Request"
-            subtitle="Suggest new features"
-            onPress={() => console.log("Feature request")}
-            iconColor="#8B5CF6"
-          />
-        </MenuSection>
-
-        {/* Legal Section */}
-        <MenuSection title="Legal">
-          <MenuItem
-            icon="document-text"
-            title="Terms of Service"
-            subtitle="Read our terms and conditions"
-            onPress={() => console.log("Terms of service")}
-            iconColor="#6B7280"
-          />
-          <MenuItem
-            icon="shield"
-            title="Privacy Policy"
-            subtitle="Learn how we protect your data"
-            onPress={() => console.log("Privacy policy")}
-            iconColor="#6B7280"
-          />
-          <MenuItem
-            icon="information-circle"
-            title="About Stark Zuri"
-            subtitle="Learn more about our platform"
-            onPress={() => console.log("About")}
-            iconColor="#6B7280"
-          />
-        </MenuSection>
-
-        {/* Account Section */}
-        <MenuSection title="Account">
-          <MenuItem
-            icon="log-out"
-            title="Logout"
-            subtitle="Sign out of your account"
-            onPress={handleLogout}
-            iconColor="#EF4444"
-          />
-        </MenuSection>
-
-        {/* App Info */}
-        <View style={styles.appInfo}>
-          <Text style={styles.appVersion}>Stark Zuri v1.2.0</Text>
-          <Text style={styles.copyright}>
-            © 2025 Stark Zuri. All rights reserved.
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>More</Text>
+          <Text style={styles.headerSubtitle}>
+            Manage your Stark Zuri experience
           </Text>
+        </View>
+
+        {/* Wallet Balance Section */}
+        <Animated.View
+          style={[
+            styles.walletContainer,
+            { transform: [{ scale: pulseAnimation }] },
+          ]}
+        >
+          <Animated.View
+            style={[styles.walletCard, { shadowColor: glowColor }]}
+          >
+            {/* Recent Reward Popup */}
+            {recentReward && (
+              <Animated.View
+                style={[
+                  styles.rewardPopup,
+                  {
+                    opacity: rewardAnimation,
+                    transform: [
+                      {
+                        translateY: rewardAnimation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [20, 0],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <Text style={styles.rewardText}>+{recentReward} $ZURI</Text>
+                <Text style={styles.rewardSubtext}>Content reward!</Text>
+              </Animated.View>
+            )}
+
+            <View style={styles.walletHeader}>
+              <IconWrapper color="#1f87fc" size={20}>
+                💰
+              </IconWrapper>
+              <Text style={styles.walletTitle}>Wallet Balance</Text>
+            </View>
+
+            <Text style={styles.balanceAmount}>
+              {user?.zuri_points?.toLocaleString()} ZURI
+            </Text>
+            <Text style={styles.balanceUsd}>
+              ≈ ${(user?.zuri_points?.toString() * 0.01).toFixed(2)} USD
+            </Text>
+
+            <View style={styles.earningsContainer}>
+              <View style={styles.earningsItem}>
+                <Text style={styles.earningsLabel}>Total Earnings</Text>
+                <Text style={styles.earningsAmount}>
+                  {user?.zuri_points?.toLocaleString()} $ZURI
+                </Text>
+              </View>
+              <View style={styles.earningsItem}>
+                <Text style={styles.earningsLabel}>This Week</Text>
+                <Text style={styles.earningsAmount}>
+                  {user?.zuri_points?.toLocaleString()} $ZURI
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.withdrawButton}
+              onPress={handleWithdraw}
+            >
+              <Text style={styles.withdrawButtonText}>Withdraw</Text>
+              <Text style={styles.withdrawIcon}>↗</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </Animated.View>
+
+        {/* Menu Items */}
+        <View style={styles.menuContainer}>
+          {menuItems.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.menuItem}
+              onPress={() => handleMenuItemPress(item.title)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.menuItemLeft}>
+                <IconWrapper color={item.color}>{item.icon}</IconWrapper>
+                <View style={styles.menuItemText}>
+                  <View style={styles.menuItemTitleRow}>
+                    <Text style={styles.menuItemTitle}>{item.title}</Text>
+                    {item.badge && (
+                      <View style={styles.badge}>
+                        <Text style={styles.badgeText}>{item.badge}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.menuItemSubtitle}>{item.subtitle}</Text>
+                </View>
+              </View>
+              <Text style={styles.chevron}>›</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Stark Zuri v1.2.0</Text>
+          <Text style={styles.footerSubtext}>Built on Starknet</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-export default StarkZuriMorePage;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#0a0a0a",
+  },
+  header: {
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 24,
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: "900",
+    color: "#ffffff",
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: "#666666",
+  },
+  walletContainer: {
+    paddingHorizontal: 24,
+    marginBottom: 32,
+  },
+  walletCard: {
+    backgroundColor: "#1a1a1a",
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: "#333333",
+    position: "relative",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  rewardPopup: {
+    position: "absolute",
+    top: -10,
+    right: 20,
+    backgroundColor: "#1f87fc",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    zIndex: 10,
+  },
+  rewardText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  rewardSubtext: {
+    color: "#ffffff",
+    fontSize: 10,
+    opacity: 0.8,
+    textAlign: "center",
+  },
+  walletHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  walletTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#ffffff",
+    marginLeft: 12,
+  },
+  balanceAmount: {
+    fontSize: 36,
+    fontWeight: "900",
+    color: "#ffffff",
+    marginBottom: 4,
+  },
+  balanceUsd: {
+    fontSize: 16,
+    color: "#666666",
+    marginBottom: 24,
+  },
+  earningsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 24,
+  },
+  earningsItem: {
+    flex: 1,
+  },
+  earningsLabel: {
+    fontSize: 14,
+    color: "#666666",
+    marginBottom: 4,
+  },
+  earningsAmount: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1f87fc",
+  },
+  withdrawButton: {
+    backgroundColor: "#1f87fc",
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  withdrawButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "600",
+    marginRight: 8,
+  },
+  withdrawIcon: {
+    color: "#ffffff",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  menuContainer: {
+    paddingHorizontal: 24,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#1a1a1a",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#333333",
+  },
+  menuItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  menuItemText: {
+    marginLeft: 16,
+    flex: 1,
+  },
+  menuItemTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  menuItemTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#ffffff",
+  },
+  badge: {
+    backgroundColor: "#ffd700",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#000000",
+  },
+  menuItemSubtitle: {
+    fontSize: 14,
+    color: "#666666",
+  },
+  chevron: {
+    fontSize: 20,
+    color: "#666666",
+    fontWeight: "300",
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  iconText: {
+    fontSize: 20,
+  },
+  footer: {
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+    alignItems: "center",
+  },
+  footerText: {
+    fontSize: 14,
+    color: "#666666",
+    marginBottom: 4,
+  },
+  footerSubtext: {
+    fontSize: 12,
+    color: "#444444",
+  },
+});
+
+export default StarkZuriMoreTab;

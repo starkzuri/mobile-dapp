@@ -1,4 +1,5 @@
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
   Text,
@@ -56,8 +57,15 @@ const StarkZuriHomepage = () => {
   const [posts, setPosts] = useState<Post[]>([]);
 
   const fetchPosts = async () => {
+    // console.log("fetching", page, loading);
+    // if (page < 1) return;
+
+    const { page, loading, decrementPage, setLoading, setHasError } =
+      usePaginationStore.getState(); // get fresh state snapshot
+
     console.log("fetching", page, loading);
-    if (page < 1) return;
+
+    if (page === null || page < 1 || loading) return;
 
     try {
       setLoading(true);
@@ -105,6 +113,33 @@ const StarkZuriHomepage = () => {
     }
   };
 
+  const fetchLatestPosts = async () => {
+    const latestPage = usePaginationStore.getState().totalPages;
+    if (!contract || !latestPage) return;
+
+    try {
+      const myCall = contract.populate("view_posts", [latestPage]);
+
+      const response = await contract["view_posts"](myCall.calldata, {
+        parseResponse: false,
+        parseRequest: false,
+      });
+
+      const newPosts = contract.callData.parse(
+        "view_posts",
+        response?.result ?? response
+      );
+
+      setPosts((current) => {
+        const existingIds = new Set(current.map((p) => p.postId));
+        const onlyNew = newPosts.filter((p) => !existingIds.has(p.postId));
+        return [...onlyNew, ...current];
+      });
+    } catch (err) {
+      console.error("Error fetching latest posts", err);
+    }
+  };
+
   useEffect(() => {
     if (contract) {
       initializePagination(contract);
@@ -113,17 +148,34 @@ const StarkZuriHomepage = () => {
     //   view_user();
     // }
   }, [contract]);
-  // console.log(posts);
 
-  // Fetch initial posts when pagination is initialized
-  useEffect(() => {
-    if (page !== null && totalPages !== null) {
+  const handleEndReached = () => {
+    // if (!loading && page > 1) {
+    //   fetchPosts();
+    // }
+
+    const { loading, page } = usePaginationStore.getState();
+    if (!loading && page > 1) {
       fetchPosts();
     }
-  }, [totalPages, contract]);
+  };
 
-  const reloadPosts = () => {
+  useFocusEffect(
+    useCallback(() => {
+      if (page !== null && totalPages !== null && contract) {
+        fetchPosts();
+      }
+    }, [page, totalPages, contract])
+  );
+
+  const reloadPosts = async () => {
     fetchPosts();
+
+    setRefreshing(true);
+    const { initializePagination } = usePaginationStore.getState();
+    await initializePagination(contract);
+    await fetchPosts();
+    setRefreshing(false);
   };
 
   const handleLike = (postId) => {
@@ -151,19 +203,19 @@ const StarkZuriHomepage = () => {
           <View style={styles.searchContainer}>
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
-              placeholder="Search creators..."
+              placeholder="Search coming soon..."
               placeholderTextColor="#8e8e93"
               style={styles.searchInput}
             />
           </View>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerButton}>
+          {/*<TouchableOpacity style={styles.headerButton}>
             <Text style={styles.headerButtonText}>🔔</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerButton}>
             <Text style={styles.headerButtonText}>👤</Text>
-          </TouchableOpacity>
+          </TouchableOpacity>*/}
         </View>
       </View>
 
@@ -206,7 +258,7 @@ const StarkZuriHomepage = () => {
         )}
         refreshing={refreshing}
         onRefresh={reloadPosts}
-        onEndReached={fetchPosts} // called when scroll nears the bottom
+        onEndReached={handleEndReached} // called when scroll nears the bottom
         onEndReachedThreshold={0.5} // 50% from the bottom
         ListFooterComponent={
           loading ? <ActivityIndicator size="large" color="#2196F3" /> : null

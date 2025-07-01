@@ -57,6 +57,8 @@ export default function Signup() {
     }
   }
 
+  // handle signup using crypto-js
+
   const handleSignup = async () => {
     let valid = true;
     setEmailError("");
@@ -190,6 +192,15 @@ export default function Signup() {
             <Text style={styles.loginText}>
               Already have an account?{" "}
               <Text style={styles.loginTextHighlight}>Sign in</Text>
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.loginLink}
+            onPress={() => router.push("/recoverAccount")}
+          >
+            <Text style={styles.loginText}>
+              Have backup file?{" "}
+              <Text style={styles.loginTextHighlight}>Recover account</Text>
             </Text>
           </TouchableOpacity>
         </View>

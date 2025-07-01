@@ -35,6 +35,7 @@ type User = {
 const { width } = Dimensions.get("window");
 import MiniFunctions from "@/utils/MiniFunctions";
 import { weiToEth } from "@/utils/AppUtils";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const CommentComponent = ({ postId, initialComments = [] }) => {
   const { contract, account, address, isReady } = useAppContext();
@@ -42,7 +43,7 @@ const CommentComponent = ({ postId, initialComments = [] }) => {
   const [platformFee, setPlatformFee] = useState("");
   const [isModalVisible, setIsModalVisible] = useState(false);
   // console.log(account);
-  console.log(address);
+  // console.log(address);
   const user = MiniFunctions(address);
 
   const [newComment, setNewComment] = useState("");
@@ -433,7 +434,7 @@ const CommentComponent = ({ postId, initialComments = [] }) => {
   // );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Comment Input */}
       <View style={styles.inputContainer}>
         <Image
@@ -503,8 +504,10 @@ const CommentComponent = ({ postId, initialComments = [] }) => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.commentsList}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
+        nestedScrollEnabled={true}
+        scrollEnabled={false} // Disable FlatList scrolling if parent handles it
       />
-    </View>
+    </SafeAreaView>
   );
 };
 

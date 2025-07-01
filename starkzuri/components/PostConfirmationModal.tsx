@@ -17,10 +17,14 @@ const ConfirmPostModal = ({
   const total = Number(gasFee) + Number(platformFee);
 
   const getUsdValue = async () => {
-    const ethPrice = await fetchEthToUsd();
-    const total = Number(gasFee) + Number(platformFee);
-    const totalInEth = ethPrice * total;
-    setTotalInUsd(totalInEth.toFixed(6));
+    try {
+      const ethPrice = await fetchEthToUsd();
+      const total = Number(gasFee) + Number(platformFee);
+      const totalInEth = ethPrice * total;
+      setTotalInUsd(totalInEth.toFixed(6));
+    } catch (e) {
+      console.log("error in fetching ", e);
+    }
   };
 
   useEffect(() => {

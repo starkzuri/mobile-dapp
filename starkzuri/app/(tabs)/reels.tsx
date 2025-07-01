@@ -13,14 +13,21 @@ import {
   Platform,
   Animated,
   PanResponder,
+  KeyboardAvoidingView,
   ImageBackground,
   Pressable,
+  ActivityIndicator,
 } from "react-native";
+import { useRouter } from "expo-router";
+
+import { CallData, uint256 } from "starknet";
 import { Video } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import CreateReelForm from "@/components/CreateReelForm";
+import Toast from "react-native-toast-message";
+import ConfirmPostModal from "@/components/PostConfirmationModal";
 
 const { height, width } = Dimensions.get("window");
 
@@ -39,6 +46,14 @@ type Reel = {
 
 import { useAppContext } from "@/providers/AppProvider";
 import { useFocusEffect } from "expo-router";
+import { CONTRACT_ADDRESS } from "@/providers/abi";
+import {
+  bigintToLongAddress,
+  bigintToShortStr,
+  weiToEth,
+} from "@/utils/AppUtils";
+import CommentComponent from "@/components/CommentComponent";
+import MiniFunctions from "@/utils/MiniFunctions";
 
 const ActionButton = ({
   icon,
@@ -51,7 +66,6 @@ const ActionButton = ({
   const [localLiked, setLocalLiked] = useState(isLiked);
 
   const handlePress = () => {
-    // Animation on press
     Animated.sequence([
       Animated.timing(scaleAnim, {
         toValue: 0.8,
@@ -108,23 +122,153 @@ const ActionButton = ({
   );
 };
 
-const ReelItem = ({ item, isVisible }) => {
+const ReelItem = ({ item, isVisible, shouldLoad }) => {
   const videoRef = useRef(null);
   const [isCommentFocused, setIsCommentFocused] = useState(false);
   const [commentText, setCommentText] = useState("");
   const slideAnim = useRef(new Animated.Value(0)).current;
   const [showControls, setShowControls] = useState(true);
+  const { contract, account, address, isReady } = useAppContext();
+  const [estimateFee, setEstimateFee] = useState("0");
+  const [platformFee, setPlatformFee] = useState("0");
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+  const user = MiniFunctions(bigintToLongAddress(item?.caller?.toString()));
+  console.log(user);
+  const router = useRouter();
+  const handleVerifyLike = async () => {
+    if (isLoading) return;
 
-  React.useEffect(() => {
-    const playOrPause = async () => {
-      if (!videoRef.current) return;
+    try {
+      setIsLoading(true);
+      setConfirmModalOpen(true);
 
+      const reelId = item?.reel_id?.toString();
+      if (!reelId) {
+        throw new Error("Invalid reel ID");
+      }
+
+      if (!contract || !account || !isReady) {
+        throw new Error("Contract or account not ready");
+      }
+
+      const ETH_ADDRESS =
+        "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
+      const FEE = BigInt("31000000000000");
+      const myCall = contract.populate("like_reel", [item.reel_id]);
+
+      const calls = [
+        {
+          contractAddress: ETH_ADDRESS,
+          entrypoint: "approve",
+          calldata: CallData.compile({
+            spender: CONTRACT_ADDRESS,
+            amount: uint256.bnToUint256(FEE),
+          }),
+        },
+        {
+          contractAddress: CONTRACT_ADDRESS,
+          entrypoint: "like_reel",
+          calldata: myCall.calldata,
+        },
+      ];
+
+      const { suggestedMaxFee, unit } = await account.estimateInvokeFee(calls);
+      const feeToEth = weiToEth(suggestedMaxFee, 8);
+      const likeFeeToEth = weiToEth(FEE);
+
+      setEstimateFee(feeToEth);
+      setPlatformFee(likeFeeToEth);
+    } catch (error) {
+      console.error("Failed to estimate fee:", error);
+      Toast.show({
+        type: "error",
+        text1: "Failure Predicted",
+        text2: "Please try again later 😢",
+      });
+      setConfirmModalOpen(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLikeReel = async () => {
+    if (isLoading) return;
+
+    try {
+      setIsLoading(true);
+      Toast.show({
+        type: "info",
+        text1: "Processing Transaction...",
+        position: "top",
+        autoHide: false,
+      });
+
+      const reelId = item?.reel_id?.toString();
+      if (!reelId) {
+        throw new Error("Invalid reel ID");
+      }
+
+      if (!contract || !account || !isReady) {
+        throw new Error("Contract or account not ready");
+      }
+
+      const ETH_ADDRESS =
+        "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
+      const FEE = BigInt("31000000000000");
+      const myCall = contract.populate("like_reel", [item.reel_id]);
+
+      const calls = [
+        {
+          contractAddress: ETH_ADDRESS,
+          entrypoint: "approve",
+          calldata: CallData.compile({
+            spender: CONTRACT_ADDRESS,
+            amount: uint256.bnToUint256(FEE),
+          }),
+        },
+        {
+          contractAddress: CONTRACT_ADDRESS,
+          entrypoint: "like_reel",
+          calldata: myCall.calldata,
+        },
+      ];
+
+      const res = await account.execute(calls);
+      console.log("Like successful:", res);
+
+      Toast.hide();
+      Toast.show({
+        type: "success",
+        text1: "Like successful!",
+        text2: "The post has your like 🎉",
+      });
+    } catch (error) {
+      console.error("Like failed:", error);
+      Toast.hide();
+      Toast.show({
+        type: "error",
+        text1: "Like failed",
+        text2: "Please try again later 😢",
+      });
+    } finally {
+      setIsLoading(false);
+      setConfirmModalOpen(false);
+    }
+  };
+
+  const playOrPause = async () => {
+    if (!videoRef.current || !videoLoaded) return;
+
+    try {
       if (Platform.OS === "web") {
         const domVideo = videoRef.current;
         if (isVisible) {
-          domVideo.play?.();
+          await domVideo.play?.();
         } else {
-          domVideo.pause?.();
+          await domVideo.pause?.();
         }
       } else {
         if (isVisible) {
@@ -133,12 +277,19 @@ const ReelItem = ({ item, isVisible }) => {
           await videoRef.current.pauseAsync();
         }
       }
-    };
+    } catch (error) {
+      console.error("Video play/pause error:", error);
+    }
+  };
 
-    playOrPause();
-  }, [isVisible]);
+  // Only play/pause when video is loaded and visibility changes
+  useEffect(() => {
+    if (videoLoaded) {
+      playOrPause();
+    }
+  }, [isVisible, videoLoaded]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     Animated.timing(slideAnim, {
       toValue: isVisible ? 1 : 0,
       duration: 500,
@@ -146,17 +297,23 @@ const ReelItem = ({ item, isVisible }) => {
     }).start();
   }, [isVisible]);
 
-  useFocusEffect(() => {
-    return () => {
-      if (videoRef.current) {
-        if (Platform.OS === "web") {
-          videoRef.current.pause?.();
-        } else {
-          videoRef.current.pauseAsync();
+  useFocusEffect(
+    React.useCallback(() => {
+      return () => {
+        if (videoRef.current && videoLoaded) {
+          try {
+            if (Platform.OS === "web") {
+              videoRef.current.pause?.();
+            } else {
+              videoRef.current.pauseAsync();
+            }
+          } catch (error) {
+            console.error("Video pause error:", error);
+          }
         }
-      }
-    };
-  });
+      };
+    }, [videoLoaded])
+  );
 
   const toggleControls = () => {
     setShowControls(!showControls);
@@ -164,31 +321,72 @@ const ReelItem = ({ item, isVisible }) => {
 
   const handleSendComment = () => {
     if (commentText.trim()) {
-      // Handle comment submission
       console.log("Sending comment:", commentText);
       setCommentText("");
       setIsCommentFocused(false);
     }
   };
 
-  const video = { uri: item.video };
-  const timeAgo = new Date(
-    item?.timestamp.toString() * 1000
-  ).toLocaleDateString();
+  const handleVideoLoad = () => {
+    setVideoLoaded(true);
+    setVideoError(false);
+  };
+
+  const handleVideoError = (error) => {
+    console.error("Video loading error:", error);
+    setVideoError(true);
+    setVideoLoaded(false);
+  };
+
+  // Safely handle video source
+  const videoSource = item?.video ? { uri: item.video } : null;
+
+  // Safely handle timestamp
+  const timeAgo = item?.timestamp
+    ? new Date(item.timestamp.toString() * 1000).toLocaleDateString()
+    : "Unknown";
+
+  // Don't render if essential data is missing
+  if (!item) {
+    return null;
+  }
 
   return (
     <SafeAreaView style={styles.reelContainer}>
       <Pressable onPress={toggleControls} style={StyleSheet.absoluteFillObject}>
-        <Video
-          ref={videoRef}
-          source={video}
-          style={styles.video}
-          resizeMode="cover"
-          isLooping
-          shouldPlay={isVisible}
-          volume={1.0}
-          muted={false}
-        />
+        {/* Only load video when shouldLoad is true */}
+        {shouldLoad && videoSource ? (
+          <Video
+            ref={videoRef}
+            source={videoSource}
+            style={styles.video}
+            resizeMode="cover"
+            isLooping
+            shouldPlay={false} // Control play manually
+            volume={1.0}
+            muted={false}
+            onLoad={handleVideoLoad}
+            onError={handleVideoError}
+            onLoadStart={() => setVideoLoaded(false)}
+          />
+        ) : (
+          // Placeholder while video loads or if no video
+          <View style={styles.videoPlaceholder}>
+            {shouldLoad && !videoError ? (
+              <ActivityIndicator size="large" color="#1f87fc" />
+            ) : videoError ? (
+              <View style={styles.errorContainer}>
+                <Ionicons name="warning-outline" size={40} color="#ff3040" />
+                <Text style={styles.errorText}>Failed to load video</Text>
+              </View>
+            ) : (
+              <View style={styles.loadingContainer}>
+                <Ionicons name="play-circle-outline" size={60} color="#fff" />
+                <Text style={styles.loadingText}>Loading...</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Gradient Overlays */}
         <LinearGradient
@@ -219,12 +417,25 @@ const ReelItem = ({ item, isVisible }) => {
             },
           ]}
         >
+          <ConfirmPostModal
+            gasFee={estimateFee}
+            platformFee={platformFee}
+            message=""
+            onCancel={() => setConfirmModalOpen(false)}
+            onConfirm={handleLikeReel}
+            visible={confirmModalOpen}
+          />
+
           {/* User Info Section */}
           <View style={styles.userInfoContainer}>
             <View style={styles.avatarContainer}>
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>
-                  {String(item.caller).charAt(0).toUpperCase()}
+                  {item?.caller
+                    ? String(bigintToShortStr(user.username))
+                        .charAt(0)
+                        .toUpperCase()
+                    : "U"}
                 </Text>
               </View>
               <View style={styles.followButton}>
@@ -237,7 +448,9 @@ const ReelItem = ({ item, isVisible }) => {
           <View style={styles.contentContainer}>
             <View style={styles.captionContainer}>
               <View style={styles.userRow}>
-                <Text style={styles.username}>@user{item.caller}</Text>
+                <Text style={styles.username}>
+                  @{bigintToShortStr(user?.username) || "Zuri Guest"}
+                </Text>
                 <View style={styles.verifiedBadge}>
                   <Ionicons name="checkmark" size={12} color="#1f87fc" />
                 </View>
@@ -245,7 +458,7 @@ const ReelItem = ({ item, isVisible }) => {
               </View>
 
               <Text style={styles.caption} numberOfLines={3}>
-                {item.description}
+                {item?.description || "No description available"}
               </Text>
 
               <View style={styles.soundContainer}>
@@ -256,7 +469,9 @@ const ReelItem = ({ item, isVisible }) => {
               {/* Zuri Points Badge */}
               <View style={styles.pointsBadge}>
                 <Ionicons name="diamond" size={16} color="#ffd700" />
-                <Text style={styles.pointsText}>{item.zuri_points} Points</Text>
+                <Text style={styles.pointsText}>
+                  {item?.zuri_points || 0} Points
+                </Text>
               </View>
             </View>
 
@@ -264,25 +479,27 @@ const ReelItem = ({ item, isVisible }) => {
             <View style={styles.actions}>
               <ActionButton
                 icon="heart-outline"
-                count={item.likes}
-                onPress={() => console.log("Like pressed")}
+                count={item?.likes || 0}
+                onPress={handleVerifyLike}
               />
               <ActionButton
                 icon="chatbubble-outline"
-                count={item.comments}
-                onPress={() => setIsCommentFocused(true)}
+                count={item?.comments || 0}
+                onPress={() =>
+                  router.push({
+                    pathname: "/modals/single_reel",
+                    params: {
+                      single_reel_id: item?.reel_id?.toString(),
+                      reel_likes: item?.likes?.toString(),
+                    },
+                  })
+                }
                 style={{ marginTop: 20 }}
               />
               <ActionButton
                 icon="arrow-redo-outline"
-                count={item.shares}
+                count={item?.shares || 0}
                 onPress={() => console.log("Share pressed")}
-                style={{ marginTop: 20 }}
-              />
-              <ActionButton
-                icon="bookmark-outline"
-                count={0}
-                onPress={() => console.log("Save pressed")}
                 style={{ marginTop: 20 }}
               />
               <ActionButton
@@ -296,42 +513,9 @@ const ReelItem = ({ item, isVisible }) => {
         </Animated.View>
       )}
 
-      {/* Enhanced Comment Input */}
-      <View
-        style={[
-          styles.commentInputContainer,
-          isCommentFocused && styles.commentInputFocused,
-        ]}
-      >
-        <BlurView intensity={80} style={styles.commentBlur}>
-          <View style={styles.commentInputInner}>
-            <TextInput
-              placeholder="Add a comment..."
-              placeholderTextColor="#888"
-              style={styles.commentInput}
-              value={commentText}
-              onChangeText={setCommentText}
-              onFocus={() => setIsCommentFocused(true)}
-              onBlur={() => setIsCommentFocused(false)}
-              multiline
-              maxLength={200}
-            />
-            <TouchableOpacity
-              style={[
-                styles.sendButton,
-                commentText.trim() && styles.sendButtonActive,
-              ]}
-              onPress={handleSendComment}
-            >
-              <Ionicons
-                name="send"
-                size={20}
-                color={commentText.trim() ? "#1f87fc" : "#666"}
-              />
-            </TouchableOpacity>
-          </View>
-        </BlurView>
-      </View>
+      {/* <Modal>
+        <CommentComponent postId={1} />
+      </Modal> */}
     </SafeAreaView>
   );
 };
@@ -344,34 +528,66 @@ export default function App() {
   const [modalVisible, setModalVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  const view_reels = () => {
-    const myCall = contract.populate("view_reels", []);
-    setLoading(true);
-    contract["view_reels"](myCall.calldata, {
-      parseResponse: false,
-      parseRequest: false,
-    })
-      .then((res) => {
-        let val = contract.callData.parse("view_reels", res?.result ?? res);
+  const view_reels = async () => {
+    if (!contract || loading) return;
+
+    try {
+      setLoading(true);
+      const myCall = contract.populate("view_reels", []);
+
+      const res = await contract["view_reels"](myCall.calldata, {
+        parseResponse: false,
+        parseRequest: false,
+      });
+
+      const val = contract.callData.parse("view_reels", res?.result ?? res);
+
+      if (Array.isArray(val)) {
         const shuffledArray = val
           .slice()
           .map((obj) => ({ ...obj }))
           .sort(() => Math.random() - 0.5);
         setReels(shuffledArray);
-      })
-      .catch((err) => {
-        console.error("Error: ", err);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+      } else {
+        console.warn("Invalid reels data received:", val);
+        setReels([]);
+      }
+    } catch (err) {
+      console.error("Error fetching reels:", err);
+      setReels([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    if (contract) {
+    if (contract && isReady) {
       view_reels();
     }
-  }, [contract]);
+  }, [contract, isReady]);
+
+  const handleScroll = (e) => {
+    const index = Math.round(e.nativeEvent.contentOffset.y / height);
+    setVisibleIndex(index);
+  };
+
+  // Determine which videos should be loaded (current + adjacent ones)
+  const shouldLoadVideo = (index) => {
+    const loadRange = 1; // Load current + 1 above and below
+    return Math.abs(index - visibleIndex) <= loadRange;
+  };
+
+  const renderReelItem = ({ item, index }) => (
+    <ReelItem
+      item={item}
+      isVisible={index === visibleIndex}
+      shouldLoad={shouldLoadVideo(index)}
+    />
+  );
+
+  const keyExtractor = (item) => {
+    return item?.reel_id?.toString() || Math.random().toString();
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -389,28 +605,34 @@ export default function App() {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={reels}
-        keyExtractor={(item) => item.reel_id.toString()}
-        renderItem={({ item, index }) => (
-          <ReelItem item={item} isVisible={index === visibleIndex} />
-        )}
-        pagingEnabled
-        showsVerticalScrollIndicator={false}
-        snapToInterval={height}
-        decelerationRate="fast"
-        snapToAlignment="start"
-        onScroll={(e) => {
-          const index = Math.round(e.nativeEvent.contentOffset.y / height);
-          setVisibleIndex(index);
-        }}
-        scrollEventThrottle={16}
-        getItemLayout={(_, index) => ({
-          length: height,
-          offset: height * index,
-          index,
-        })}
-      />
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#1f87fc" />
+          <Text style={styles.loadingText}>Loading reels...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={reels}
+          keyExtractor={keyExtractor}
+          renderItem={renderReelItem}
+          pagingEnabled
+          showsVerticalScrollIndicator={false}
+          snapToInterval={height}
+          decelerationRate="fast"
+          snapToAlignment="start"
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          getItemLayout={(_, index) => ({
+            length: height,
+            offset: height * index,
+            index,
+          })}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={2}
+          windowSize={3}
+          initialNumToRender={1}
+        />
+      )}
 
       <Modal visible={modalVisible} animationType="slide">
         <CreateReelForm onClose={() => setModalVisible(false)} />
@@ -458,6 +680,16 @@ const styles = StyleSheet.create({
   headerButton: {
     padding: 8,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    color: "#fff",
+    fontSize: 16,
+    marginTop: 10,
+  },
   reelContainer: {
     width,
     height,
@@ -469,6 +701,22 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 0,
     left: 0,
+  },
+  videoPlaceholder: {
+    width,
+    height,
+    backgroundColor: "#1a1a1a",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  errorContainer: {
+    alignItems: "center",
+  },
+  errorText: {
+    color: "#ff3040",
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: "center",
   },
   topGradient: {
     position: "absolute",
@@ -623,41 +871,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     textAlign: "center",
-  },
-  commentInputContainer: {
-    position: "absolute",
-    bottom: 30,
-    left: 16,
-    right: 90,
-    zIndex: 3,
-  },
-  commentInputFocused: {
-    bottom: 40,
-  },
-  commentBlur: {
-    borderRadius: 25,
-    overflow: "hidden",
-  },
-  commentInputInner: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
-  },
-  commentInput: {
-    flex: 1,
-    color: "#fff",
-    fontSize: 14,
-    maxHeight: 60,
-  },
-  sendButton: {
-    paddingLeft: 12,
-    padding: 8,
-  },
-  sendButtonActive: {
-    backgroundColor: "rgba(31, 135, 252, 0.2)",
-    borderRadius: 16,
   },
   createReelButton: {
     position: "absolute",

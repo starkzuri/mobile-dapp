@@ -1,25 +1,6 @@
-import {
-  View,
-  Text,
-  ScrollView,
-  Image,
-  TouchableOpacity,
-  Pressable,
-  TextInput,
-  StyleSheet,
-  SafeAreaView,
-  StatusBar,
-} from "react-native";
+import React, { memo } from "react";
+import { Pressable } from "react-native";
 import styles from "../styles/index";
-import {
-  bigintToLongAddress,
-  truncateAddress,
-  bigintToShortStr,
-  formatDate,
-  getUint256CalldataFromBN,
-  parseInputAmountToUint256,
-  timeAgo,
-} from "../utils/AppUtils";
 import { router } from "expo-router";
 import PostHeader from "./PostHeader";
 import PostContent from "./PostContent";
@@ -48,4 +29,11 @@ const PostItem = ({ post, handleLike }) => (
   </Pressable>
 );
 
-export default PostItem;
+export default memo(PostItem, (prevProps, nextProps) => {
+  return (
+    prevProps.post === nextProps.post &&
+    prevProps.handleLike === nextProps.handleLike
+  );
+});
+
+// export default PostItem;

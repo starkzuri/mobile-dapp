@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, Pressable, Alert } from "react-native";
 import styles from "@/styles/index";
 import React from "react";
 import { CallData, uint256, cairo } from "starknet";
@@ -7,14 +7,18 @@ import { useAppContext } from "@/providers/AppProvider";
 import Toast from "react-native-toast-message";
 import ConfirmPostModal from "./PostConfirmationModal";
 import { CONTRACT_ADDRESS } from "@/providers/abi";
-import { weiToEth } from "@/utils/AppUtils";
+import { bigintToLongAddress, weiToEth } from "@/utils/AppUtils";
 
 const PostFooter = ({ post }) => {
-  const { account, isReady, contract } = useAppContext();
+  const { account, isReady, contract, address } = useAppContext();
   const [estimateFee, setEstimateFee] = useState("");
   const [platformFee, setPlatformFee] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const caller = bigintToLongAddress(post?.caller);
+  const [claimModalOpen, setClaimModalOpen] = useState(false);
+  // console.log(caller);
+  // console.log(address);
 
   const estimateLikeFees = async () => {
     if (!account || !isReady || !contract) return;
@@ -59,6 +63,75 @@ const PostFooter = ({ post }) => {
     await estimateLikeFees();
   };
   // console.log(account);
+
+  const handleClaimPoints = async () => {
+    if (!isReady || !account || !contract || !post) return;
+    Toast.show({
+      type: "info",
+      text1: "Processing Transaction...",
+      position: "top",
+      autoHide: false,
+    });
+
+    try {
+      const myCall = contract.populate("claim_post_points", [post?.postId]);
+
+      const res = await account.execute(myCall);
+      console.log("points claimed", res.transaction_hash);
+
+      Toast.hide();
+      Toast.show({
+        type: "success",
+        text1: "Zuri Claimed",
+        text2: "You can now withdraw your points to wallet 🎉",
+      });
+
+      // Alert.alert("Success", "Your post has been created!");
+    } catch (error) {
+      console.error("TX failed ", error);
+      Toast.hide();
+      Toast.show({
+        type: "error",
+        text1: "claim Failed",
+        text2: "Please try again later 😢",
+      });
+    } finally {
+      setIsLoading(false);
+      setClaimModalOpen(false);
+    }
+  };
+  const verifyHandleClaimPoints = async () => {
+    await estimateClaimFees();
+    setClaimModalOpen(true);
+  };
+  const estimateClaimFees = async () => {
+    console.log("estimating");
+    console.log(post);
+
+    if (!account || !isReady || !contract || !post) return;
+
+    try {
+      const myCall = contract.populate("claim_post_points", [
+        post?.postId.toString(),
+      ]);
+
+      const { suggestedMaxFee, unit } = await account.estimateInvokeFee({
+        contractAddress: CONTRACT_ADDRESS,
+        entrypoint: "claim_post_points",
+        calldata: myCall.calldata,
+      });
+
+      const feeToEth = weiToEth(suggestedMaxFee, 8);
+
+      console.log("estimation done");
+      console.log("estimatedFee", suggestedMaxFee.toString());
+      console.log("unit ", unit.toString());
+      setEstimateFee(feeToEth);
+      setPlatformFee("0.00");
+    } catch (err) {
+      console.error("🔥 Estimation failed:", err);
+    }
+  };
 
   const handleLike = async () => {
     if (!isReady || !account || !contract) return;
@@ -128,6 +201,32 @@ const PostFooter = ({ post }) => {
             <Text style={styles.trendingIcon}>📈</Text>
             <Text style={styles.rewardsValue}>ZRP {post?.zuri_points}</Text>
           </View>
+          {caller == address && post?.zuri_points.toString() != "0" && (
+            <Pressable
+              onPress={verifyHandleClaimPoints}
+              style={({ pressed }) => [
+                {
+                  backgroundColor: pressed ? "#166ac7" : "#1f87fc", // darker shade on press
+                  paddingVertical: 8,
+                  paddingHorizontal: 16,
+                  borderRadius: 12,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  shadowColor: "#1f87fc",
+                  shadowOpacity: 0.4,
+                  shadowRadius: 6,
+                  shadowOffset: { width: 0, height: 3 },
+                  elevation: 5, // for Android shadow
+                },
+              ]}
+            >
+              <Text
+                style={{ color: "#ffffff", fontSize: 16, fontWeight: "600" }}
+              >
+                Claim
+              </Text>
+            </Pressable>
+          )}
         </View>
       </View>
 
@@ -167,6 +266,15 @@ const PostFooter = ({ post }) => {
         onCancel={() => setIsModalVisible(false)}
         onConfirm={handleLike}
         visible={isModalVisible}
+      />
+
+      <ConfirmPostModal
+        gasFee={estimateFee}
+        platformFee={platformFee}
+        message=""
+        onCancel={() => setClaimModalOpen(false)}
+        onConfirm={handleClaimPoints}
+        visible={claimModalOpen}
       />
 
       {/* Call to Action Buttons */}

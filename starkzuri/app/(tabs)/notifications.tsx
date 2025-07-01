@@ -223,7 +223,7 @@ const StarkZuriNotifications = () => {
         "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=face",
       verified: false,
     };
-    console.log(user);
+    // console.log(user);
 
     // console.log(caller);
 
