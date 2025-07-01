@@ -7,19 +7,24 @@ import {
   TouchableOpacity,
   Image,
   TextInput,
-  SafeAreaView,
   FlatList,
   Dimensions,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { CallData, uint256 } from "starknet";
 import { Ionicons } from "@expo/vector-icons"; // or react-native-vector-icons
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Markdown from "react-native-markdown-display";
+import Toast from "react-native-toast-message";
 import TurndownService from "turndown";
 import PostHeader from "@/components/PostHeader";
 import PostFooter from "@/components/PostFooter";
 import { useAppContext } from "@/providers/AppProvider";
 import CommentComponent from "@/components/CommentComponent";
 import { htmlToMarkdown } from "@/utils/AppUtils";
+import { weiToEth } from "@/utils/AppUtils";
+import ConfirmPostModal from "@/components/PostConfirmationModal";
+import { CONTRACT_ADDRESS } from "@/providers/abi";
 
 const { width } = Dimensions.get("window");
 
@@ -95,14 +100,17 @@ type Post = {
 };
 
 const SinglePostPage = () => {
-  const [liked, setLiked] = useState(samplePost.liked);
-  const [likeCount, setLikeCount] = useState(samplePost.likes);
   const [comments, setComments] = useState(sampleComments);
   const [newComment, setNewComment] = useState("");
   const { single_post } = useLocalSearchParams();
+  const [estimateFee, setEstimateFee] = useState("0");
+  const [platformFee, setPlatformFee] = useState("0");
+  const [likeModalVisible, setLikeModalVisible] = useState(false);
+  const [claimModalOpen, setClaimModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   // console.log(single_post);
-  const { contract } = useAppContext();
+  const { contract, account, isReady } = useAppContext();
   // console.log(contract);
   const [loading, setLoading] = useState(false);
   const [posts, setPosts] = useState<Post>({
@@ -134,12 +142,6 @@ const SinglePostPage = () => {
     } else {
       router.replace("/"); // or wherever the safe fallback is
     }
-  };
-
-  const handleLike = () => {
-    setLiked(!liked);
-
-    // setLikeCount((prev) => (liked ? prev - 1 : prev + 1));
   };
 
   const view_post = () => {
@@ -230,6 +232,189 @@ const SinglePostPage = () => {
     return `${hours}h ago`;
   };
 
+  const verifyLike = async () => {
+    setLikeModalVisible(true);
+    await estimateLikeFees();
+  };
+
+  // console.log(single_post);
+
+  const estimateLikeFees = async () => {
+    console.log(single_post);
+    if (!account || !isReady || !contract) return;
+    try {
+      const myCall = contract.populate("like_post", [single_post]);
+
+      const ETH_ADDRESS =
+        "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
+      const POST_CONTRACT =
+        "0x7c2109cfa8c36fa10c6baac19b234679606cba00eb6697a052b73b869850673";
+      const FEE = BigInt("31000000000000");
+
+      const calls = [
+        {
+          contractAddress: ETH_ADDRESS,
+          entrypoint: "approve",
+          calldata: CallData.compile({
+            spender: POST_CONTRACT,
+            amount: uint256.bnToUint256(FEE),
+          }),
+        },
+        {
+          contractAddress: POST_CONTRACT,
+          entrypoint: "like_post",
+          calldata: myCall.calldata,
+        },
+      ];
+      const { suggestedMaxFee, unit } = await account.estimateInvokeFee(calls);
+
+      const likeFee = BigInt("31000000000000");
+      const feeToEth = weiToEth(suggestedMaxFee, 8);
+      const likeFeeToEth = weiToEth(likeFee);
+      setEstimateFee(feeToEth);
+      setPlatformFee(likeFeeToEth);
+    } catch (error) {
+      console.log("estimation error ", error);
+    }
+  };
+
+  const handleLike = async () => {
+    // setPosts(
+    //   posts.map((post) =>
+    //     post.postId === postId
+    //       ? {
+    //           ...post,
+    //           // liked: !post.liked,
+    //           likes: post.likes ? post.likes - 1 : post.likes + 1,
+    //         }
+    //       : post
+    //   )
+    // );
+
+    if (!isReady || !account || !contract) return;
+
+    Toast.show({
+      type: "info",
+      text1: "Processing Transaction...",
+      position: "top",
+      autoHide: false,
+    });
+
+    const ETH_ADDRESS =
+      "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
+    const POST_CONTRACT =
+      "0x7c2109cfa8c36fa10c6baac19b234679606cba00eb6697a052b73b869850673";
+    const FEE = BigInt("31000000000000");
+
+    const myCall = contract.populate("like_post", [single_post]);
+
+    const calls = [
+      {
+        contractAddress: ETH_ADDRESS,
+        entrypoint: "approve",
+        calldata: CallData.compile({
+          spender: POST_CONTRACT,
+          amount: uint256.bnToUint256(FEE),
+        }),
+      },
+      {
+        contractAddress: POST_CONTRACT,
+        entrypoint: "like_post",
+        calldata: myCall.calldata,
+      },
+    ];
+
+    try {
+      const res = await account.execute(calls);
+      console.log("Transaction sent!", res.transaction_hash);
+
+      Toast.hide();
+      Toast.show({
+        type: "success",
+        text1: "Like successful!",
+        text2: "Your like now counts 🎉",
+      });
+    } catch (err) {
+      console.error("TX failed:", err);
+      Toast.show({
+        type: "error",
+        text1: "like Failed",
+        text2: "Please try again later 😢",
+      });
+    } finally {
+      setLikeModalVisible(false);
+    }
+  };
+
+  const verifyHandleClaimPoints = async () => {
+    await estimateClaimFees();
+    setClaimModalOpen(true);
+  };
+
+  const estimateClaimFees = async () => {
+    console.log("estimating");
+    // console.log(post);
+
+    if (!account || !isReady || !contract) return;
+
+    try {
+      const myCall = contract.populate("claim_post_points", [single_post]);
+
+      const { suggestedMaxFee, unit } = await account.estimateInvokeFee({
+        contractAddress: CONTRACT_ADDRESS,
+        entrypoint: "claim_post_points",
+        calldata: myCall.calldata,
+      });
+
+      const feeToEth = weiToEth(suggestedMaxFee, 8);
+
+      console.log("estimation done");
+      console.log("estimatedFee", suggestedMaxFee.toString());
+      console.log("unit ", unit.toString());
+      setEstimateFee(feeToEth);
+      setPlatformFee("0.00");
+    } catch (err) {
+      console.error("🔥 Estimation failed:", err);
+    }
+  };
+
+  const handleClaimPoints = async () => {
+    if (!isReady || !account || !contract) return;
+    Toast.show({
+      type: "info",
+      text1: "Processing Transaction...",
+      position: "top",
+      autoHide: false,
+    });
+
+    try {
+      const myCall = contract.populate("claim_post_points", [single_post]);
+
+      const res = await account.execute(myCall);
+      console.log("points claimed", res.transaction_hash);
+
+      Toast.hide();
+      Toast.show({
+        type: "success",
+        text1: "Zuri Claimed",
+        text2: "You can now withdraw your points to wallet 🎉",
+      });
+
+      // Alert.alert("Success", "Your post has been created!");
+    } catch (error) {
+      console.error("TX failed ", error);
+      Toast.hide();
+      Toast.show({
+        type: "error",
+        text1: "claim Failed",
+        text2: "Please try again later 😢",
+      });
+    } finally {
+      setIsLoading(false);
+      setClaimModalOpen(false);
+    }
+  };
+
   useEffect(() => {
     if (contract) {
       view_post();
@@ -290,7 +475,29 @@ const SinglePostPage = () => {
           </View>
         </View>
 
-        <PostFooter post={posts} handleLike={handleLike} />
+        <ConfirmPostModal
+          gasFee={estimateFee}
+          platformFee={platformFee}
+          message=""
+          onCancel={() => setLikeModalVisible(false)}
+          onConfirm={handleLike}
+          visible={likeModalVisible}
+        />
+
+        <ConfirmPostModal
+          gasFee={estimateFee}
+          platformFee={platformFee}
+          message=""
+          onCancel={() => setClaimModalOpen(false)}
+          onConfirm={handleClaimPoints}
+          visible={claimModalOpen}
+        />
+
+        <PostFooter
+          post={posts}
+          handleClaimPoints={verifyHandleClaimPoints}
+          handleLike={verifyLike}
+        />
 
         {/* Engagement Stats */}
 

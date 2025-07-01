@@ -386,7 +386,7 @@ const ProfileUpdateComponent = ({ onClose }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#111827",
+    backgroundColor: "#0a0a0a",
   },
   header: {
     flexDirection: "row",
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   coverPhotoPlaceholder: {
-    backgroundColor: "#1F2937",
+    backgroundColor: "#1a1a1a",
     borderWidth: 2,
     borderColor: "#374151",
     borderStyle: "dashed",
@@ -481,7 +481,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     borderRadius: 36,
-    backgroundColor: "#1F2937",
+    backgroundColor: "#1a1a1a",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -523,7 +523,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
   textInput: {
-    backgroundColor: "#1F2937",
+    backgroundColor: "#1a1a1a",
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   previewCard: {
-    backgroundColor: "#1F2937",
+    backgroundColor: "#1a1a1a",
     borderRadius: 16,
     padding: 20,
     marginBottom: 40,

@@ -8,6 +8,10 @@ import {
   StyleSheet,
   Modal,
   Dimensions,
+  ToastAndroid,
+  Platform,
+  Pressable,
+  Alert,
 } from "react-native";
 import {
   Bell,
@@ -22,10 +26,11 @@ import {
 import Toast from "react-native-toast-message";
 import RewardCards from "@/components/RewardCard";
 import { useAppContext } from "@/providers/AppProvider";
-import { bigintToShortStr } from "@/utils/AppUtils";
+import { bigintToLongAddress, bigintToShortStr } from "@/utils/AppUtils";
 import MiniFunctions from "@/utils/MiniFunctions";
 import ProfileUpdateComponent from "@/components/UpdateUser";
 import ConfirmPostModal from "@/components/PostConfirmationModal";
+import * as Clipboard from "expo-clipboard";
 
 const { width } = Dimensions.get("window");
 
@@ -44,7 +49,7 @@ type User = {
 };
 
 const UserProfile = () => {
-  const { account, isReady, contract } = useAppContext();
+  const { account, isReady, contract, address } = useAppContext();
   const user = MiniFunctions(account?.address?.toString());
   // console.log(account);
   const [modalVisible, setModalVisible] = useState(false);
@@ -91,7 +96,11 @@ const UserProfile = () => {
         {/* Cover Photo */}
         <View style={styles.coverContainer}>
           <Image
-            source={{ uri: user?.cover_photo }}
+            source={{
+              uri:
+                user?.cover_photo ||
+                "https://cdn.pixabay.com/photo/2016/06/02/02/33/triangles-1430105_1280.png",
+            }}
             style={styles.coverPhoto}
             defaultSource={{
               uri: user?.cover_photo,
@@ -103,9 +112,11 @@ const UserProfile = () => {
           <View style={styles.headerActions}>
             <TouchableOpacity style={styles.actionButton}>
               <Bell size={20} color="#ffffff" />
-              {userData.notifications !== "0" && (
+              {user?.notifications.toString() !== "0" && (
                 <View style={styles.notificationBadge}>
-                  <Text style={styles.badgeText}>{userData.notifications}</Text>
+                  <Text style={styles.badgeText}>
+                    {user?.notifications.toString()}
+                  </Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -120,7 +131,11 @@ const UserProfile = () => {
           {/* Profile Picture */}
           <View style={styles.profilePicContainer}>
             <Image
-              source={{ uri: user?.profile_pic }}
+              source={{
+                uri:
+                  user?.profile_pic ||
+                  "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png",
+              }}
               style={styles.profilePic}
               defaultSource={{
                 uri: user?.cover_photo,
@@ -133,14 +148,14 @@ const UserProfile = () => {
           <View style={styles.userInfo}>
             <View style={styles.nameContainer}>
               <Text style={styles.displayName}>
-                {bigintToShortStr(user?.name)}
+                {bigintToShortStr(user?.name) || "Zuri Guest"}
               </Text>
               <View style={styles.verifiedBadge}>
                 <Star size={16} color="#1f87fc" fill="#1f87fc" />
               </View>
             </View>
             <Text style={styles.username}>
-              @{bigintToShortStr(user.username)}
+              @{bigintToShortStr(user.username) || "zuriguest"}
             </Text>
             <Text style={styles.about}>{user?.about}</Text>
 
@@ -249,13 +264,35 @@ const UserProfile = () => {
           </Text>
           <View style={styles.userIdContainer}>
             <Text style={styles.userIdLabel}>User ID:</Text>
-            <Text
+            {/* <Text
               style={styles.userId}
               numberOfLines={1}
               ellipsizeMode="middle"
             >
-              {userData.userId}
-            </Text>
+              {address}
+            </Text> */}
+
+            <Pressable
+              onPress={() => {
+                Clipboard.setStringAsync(address);
+                if (Platform.OS === "android") {
+                  ToastAndroid.show("Address copied!", ToastAndroid.SHORT);
+                } else {
+                  Alert.alert(
+                    "Copied",
+                    "Address has been copied to clipboard."
+                  );
+                }
+              }}
+            >
+              <Text
+                style={[styles.userId, { textDecorationLine: "underline" }]}
+                numberOfLines={1}
+                ellipsizeMode="middle"
+              >
+                {address}
+              </Text>
+            </Pressable>
           </View>
         </View>
       </ScrollView>

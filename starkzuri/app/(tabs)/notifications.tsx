@@ -17,6 +17,7 @@ import { useAppContext } from "@/providers/AppProvider";
 import MiniFunctions from "@/utils/MiniFunctions";
 import { bigintToLongAddress, bigintToShortStr } from "@/utils/AppUtils";
 import RenderNotification from "@/components/RenderNotification";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 
@@ -50,61 +51,6 @@ const StarkZuriNotifications = () => {
       verified: true,
     },
   };
-
-  // Sample notification data based on your structure
-  const sampleNotifications = [
-    {
-      notification_id: "1",
-      caller: "85103766236013673763402341",
-      receiver:
-        "3576822344088438784960174474173613065167062044832123606782432014284400833814",
-      notification_message:
-        "commented on your post and that earned your post 2 zuri points",
-      notification_type: "27988538471837300", // comment
-      notification_status: "129117226099044", // unread
-      timestamp: "1720736743",
-    },
-    {
-      notification_id: "2",
-      caller: "85103766236013673763402341",
-      receiver:
-        "3576822344088438784960174474173613065167062044832123606782432014284400833814",
-      notification_message: "liked your post and won you 10 Zuri points",
-      notification_type: "1818848101", // like
-      notification_status: "129117226099044", // unread
-      timestamp: "1720736743",
-    },
-    {
-      notification_id: "3",
-      caller: "85103766236013673763402341",
-      receiver:
-        "3576822344088438784960174474173613065167062044832123606782432014284400833814",
-      notification_message: "followed you",
-      notification_type: "28832959090882337", // follow
-      notification_status: "129117226099044", // unread
-      timestamp: "1720798294",
-    },
-    {
-      notification_id: "4",
-      caller: "135878797943861642785159013",
-      receiver:
-        "3576822344088438784960174474173613065167062044832123606782432014284400833814",
-      notification_message: "liked your reel and won you 10 zuri points",
-      notification_type: "1818848101", // like
-      notification_status: "0", // read
-      timestamp: "1720799027",
-    },
-    {
-      notification_id: "5",
-      caller: "0",
-      receiver:
-        "3576822344088438784960174474173613065167062044832123606782432014284400833814",
-      notification_message: "liked your post and won you 10 Zuri points",
-      notification_type: "1818848101", // like
-      notification_status: "0", // read
-      timestamp: "1720972305",
-    },
-  ];
 
   const fetchNotifications = async () => {
     if (!contract || !account) return;
@@ -285,7 +231,7 @@ const StarkZuriNotifications = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Notifications</Text>
         <TouchableOpacity style={styles.markAllButton}>
@@ -319,7 +265,7 @@ const StarkZuriNotifications = () => {
           ))}
         </ScrollView>
       </Animated.View>
-    </View>
+    </SafeAreaView>
   );
 };
 

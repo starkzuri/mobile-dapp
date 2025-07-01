@@ -8,7 +8,6 @@ import {
   StatusBar,
   TouchableOpacity,
   TextInput,
-  SafeAreaView,
   Modal,
   Platform,
   Animated,
@@ -19,7 +18,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-
+import { SafeAreaView } from "react-native-safe-area-context";
 import { CallData, uint256 } from "starknet";
 import { Video } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";

@@ -53,15 +53,18 @@ export default function RecoverAccount() {
 
     setLoading(true);
     try {
-      const response = await fetch("http://192.168.161.35:4000/recover", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          encryptedBackup: fileContent,
-          password: password,
-          email: email,
-        }),
-      });
+      const response = await fetch(
+        "https://relayer-xsew.onrender.com/recover",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            encryptedBackup: fileContent,
+            password: password,
+            email: email,
+          }),
+        }
+      );
 
       const data = await response.json();
       //   console.log(data);

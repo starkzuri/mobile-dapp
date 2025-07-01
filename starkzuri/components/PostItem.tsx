@@ -6,7 +6,7 @@ import PostHeader from "./PostHeader";
 import PostContent from "./PostContent";
 import PostFooter from "./PostFooter";
 
-const PostItem = ({ post, handleLike }) => (
+const PostItem = ({ post, handleLike, handleClaimPoints }) => (
   <Pressable
     onPress={() =>
       router.push({
@@ -25,7 +25,11 @@ const PostItem = ({ post, handleLike }) => (
 
     <PostHeader post={post} />
     <PostContent post={post} handleLike={handleLike} />
-    <PostFooter post={post} handleLike={handleLike} />
+    <PostFooter
+      post={post}
+      handleLike={handleLike}
+      handleClaimPoints={handleClaimPoints}
+    />
   </Pressable>
 );
 

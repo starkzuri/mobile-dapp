@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
 import Modal from "react-native-modal";
 import { toDecimalString, fetchEthToUsd } from "@/utils/AppUtils";
 
@@ -11,60 +17,82 @@ const ConfirmPostModal = ({
   gasFee,
   platformFee,
 }) => {
-  //   console.log(gasFee);
   const [totalInUsd, setTotalInUsd] = useState("0");
+  const [loading, setLoading] = useState(true);
 
   const total = Number(gasFee) + Number(platformFee);
 
   const getUsdValue = async () => {
+    setLoading(true);
     try {
       const ethPrice = await fetchEthToUsd();
-      const total = Number(gasFee) + Number(platformFee);
       const totalInEth = ethPrice * total;
       setTotalInUsd(totalInEth.toFixed(6));
     } catch (e) {
       console.log("error in fetching ", e);
+      setTotalInUsd("0");
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    getUsdValue();
-  }, [gasFee, platformFee]);
+    if (visible) getUsdValue();
+  }, [gasFee, platformFee, visible]);
 
   return (
     <Modal isVisible={visible} backdropColor="#000" backdropOpacity={0.7}>
       <View style={styles.modalBox}>
         <Text style={styles.title}>Almost There!</Text>
-        <Text style={styles.subtext}>Review Fees before Transaction:</Text>
-        <Text style={styles.feeText}>⛽ Gas Fee: ~{gasFee} ETH</Text>
-        <Text style={styles.feeText}>🎯 Platform Fee: ~{platformFee} ETH</Text>
-        <Text
-          style={[
-            styles.feeText,
-            { fontWeight: "bold", marginTop: 25, textAlign: "left" },
-          ]}
-        >
-          🧾 Total: {toDecimalString(total)} ETH
-        </Text>
 
-        <Text
-          style={[
-            styles.feeText,
-            {
-              fontWeight: "bold",
-              textAlign: "left",
-            },
-          ]}
-        >
-          $ {totalInUsd}
-        </Text>
+        {loading ? (
+          <View style={{ marginTop: 24 }}>
+            <ActivityIndicator size="large" color="#1f87fc" />
+            <Text style={[styles.subtext, { marginTop: 12 }]}>
+              Loading fees...
+            </Text>
+          </View>
+        ) : (
+          <>
+            <Text style={styles.subtext}>Review Fees before Transaction:</Text>
+            <Text style={styles.feeText}>⛽ Gas Fee: ~{gasFee} ETH</Text>
+            <Text style={styles.feeText}>
+              🎯 Platform Fee: ~{platformFee} ETH
+            </Text>
+            <Text
+              style={[
+                styles.feeText,
+                { fontWeight: "bold", marginTop: 25, textAlign: "left" },
+              ]}
+            >
+              🧾 Total: {toDecimalString(total)} ETH
+            </Text>
+            <Text
+              style={[
+                styles.feeText,
+                {
+                  fontWeight: "bold",
+                  textAlign: "left",
+                },
+              ]}
+            >
+              $ {totalInUsd}
+            </Text>
+          </>
+        )}
 
         <View style={styles.actions}>
           <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
             <Text style={styles.cancelText}>Cancel</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.confirmButton} onPress={onConfirm}>
-            <Text style={styles.confirmText}>Continue</Text>
+          <TouchableOpacity
+            style={[styles.confirmButton, loading && { opacity: 0.5 }]}
+            onPress={onConfirm}
+            disabled={loading}
+          >
+            <Text style={styles.confirmText}>
+              {loading ? "Please wait..." : "Continue"}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>

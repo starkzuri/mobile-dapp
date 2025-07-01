@@ -137,7 +137,8 @@
 // }
 
 import { BigNumber } from "bignumber.js";
-import { shortString, uint256 } from "starknet";
+import { shortString, uint256, Provider, Contract } from "starknet";
+import { NODE_URL } from "./constants";
 
 /**
  * Convert bigint string to decoded short string
@@ -377,3 +378,28 @@ export const fetchEthToUsd = async () => {
     return null;
   }
 };
+
+export async function getEthBalance(address: string) {
+  // Connect to StarkNet
+  const provider = new Provider({ nodeUrl: NODE_URL });
+
+  // ETH contract on StarkNet
+  const ETH_CONTRACT_ADDRESS =
+    "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
+
+  // Minimal ABI for balanceOf
+  const ETH_ABI = [
+    {
+      name: "balanceOf",
+      type: "function",
+      inputs: [{ name: "account", type: "felt" }],
+      outputs: [{ name: "balance", type: "Uint256" }],
+      stateMutability: "view",
+    },
+  ];
+  const eth = new Contract(ETH_ABI, ETH_CONTRACT_ADDRESS, provider);
+  const res = await eth.balanceOf(address);
+  const balance = uint256.uint256ToBN(res.balance);
+  console.log("ETH Balance:", balance.toString());
+  return balance.toString();
+}

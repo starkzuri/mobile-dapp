@@ -8,6 +8,7 @@ import {
   Animated,
   StatusBar,
   Alert,
+  RefreshControl,
   Dimensions,
 } from "react-native";
 import { Redirect, useRouter } from "expo-router";
@@ -15,6 +16,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MiniFunctions from "@/utils/MiniFunctions";
 import { useAppContext } from "@/providers/AppProvider";
+import { getEthBalance, weiToEth } from "@/utils/AppUtils";
 
 // Icon components (you can replace these with react-native-vector-icons)
 const IconWrapper = ({ children, color, size = 24 }) => (
@@ -24,16 +26,59 @@ const IconWrapper = ({ children, color, size = 24 }) => (
 );
 
 const StarkZuriMoreTab = () => {
-  const [balance, setBalance] = useState(2847.56);
-  const [earnings, setEarnings] = useState(847.56);
   const [recentReward, setRecentReward] = useState(null);
   const { account, address, contract } = useAppContext();
   const router = useRouter();
+  const [ethbalance, setEthBalance] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  // console.log(ethbalance);
 
   const glowAnimation = useRef(new Animated.Value(0)).current;
   const pulseAnimation = useRef(new Animated.Value(1)).current;
   const rewardAnimation = useRef(new Animated.Value(0)).current;
-  const user = MiniFunctions(address);
+  // const user = MiniFunctions(address);
+  const [user, setUser] = useState(null);
+
+  const fetchUser = async () => {
+    if (!contract || !address) return;
+    try {
+      const userAddress = address;
+      const myCall = await contract.populate("view_user", [userAddress]);
+
+      const res = await contract["view_user"](myCall.calldata, {
+        parseResponse: false,
+        parseRequest: false,
+      });
+
+      const val = contract.callData.parse("view_user", res?.result ?? res);
+
+      setUser(val);
+    } catch (err) {
+      console.error("Error fetching user:", err);
+    }
+  };
+
+  const getGasBalance = async () => {
+    const gasbalance = await getEthBalance(address);
+    setEthBalance(weiToEth(gasbalance));
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await getGasBalance();
+    // You can add more data fetching here if needed
+    setRefreshing(false);
+  };
+
+  useEffect(() => {
+    fetchUser();
+    getGasBalance();
+  }, [contract, address]);
+  useEffect(() => {
+    getGasBalance();
+  }, [user]);
+
+  // console.log(ethbalance);
   // console.log(user);
 
   // Animate glow effect
@@ -129,18 +174,18 @@ const StarkZuriMoreTab = () => {
     //   subtitle: "Learn about $ZURI economics",
     //   color: "#f59e0b",
     // },
-    // {
-    //   icon: "🛡️",
-    //   title: "Community Guidelines",
-    //   subtitle: "Rules and best practices",
-    //   color: "#ef4444",
-    // },
-    // {
-    //   icon: "🐛",
-    //   title: "Report Bug / Feedback",
-    //   subtitle: "Help us improve Stark Zuri",
-    //   color: "#06b6d4",
-    // },
+    {
+      icon: "✖️",
+      title: "Follow us on X",
+      subtitle: "follow us on X",
+      color: "#ef4444",
+    },
+    {
+      icon: "👾",
+      title: "Join Discord",
+      subtitle: "Join our Discord Community",
+      color: "#06b6d4",
+    },
     {
       icon: "🚪↩️",
       title: "Log Out",
@@ -189,7 +234,16 @@ const StarkZuriMoreTab = () => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#1f87fc"
+          />
+        }
+      >
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>More</Text>
@@ -247,9 +301,9 @@ const StarkZuriMoreTab = () => {
 
             <View style={styles.earningsContainer}>
               <View style={styles.earningsItem}>
-                <Text style={styles.earningsLabel}>Total Earnings</Text>
+                <Text style={styles.earningsLabel}>Eth Balance</Text>
                 <Text style={styles.earningsAmount}>
-                  {user?.zuri_points?.toLocaleString()} $ZURI
+                  {ethbalance.toString()} ETH
                 </Text>
               </View>
               <View style={styles.earningsItem}>

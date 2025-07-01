@@ -9,7 +9,7 @@ import ConfirmPostModal from "./PostConfirmationModal";
 import { CONTRACT_ADDRESS } from "@/providers/abi";
 import { bigintToLongAddress, weiToEth } from "@/utils/AppUtils";
 
-const PostFooter = ({ post }) => {
+const PostFooter = ({ post, handleLike, handleClaimPoints }) => {
   const { account, isReady, contract, address } = useAppContext();
   const [estimateFee, setEstimateFee] = useState("");
   const [platformFee, setPlatformFee] = useState("");
@@ -20,174 +20,175 @@ const PostFooter = ({ post }) => {
   // console.log(caller);
   // console.log(address);
 
-  const estimateLikeFees = async () => {
-    if (!account || !isReady || !contract) return;
-    try {
-      const myCall = contract.populate("like_post", [post.postId]);
+  // const estimateLikeFees = async () => {
+  //   if (!account || !isReady || !contract) return;
+  //   try {
+  //     const myCall = contract.populate("like_post", [post.postId]);
 
-      const ETH_ADDRESS =
-        "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
-      const POST_CONTRACT =
-        "0x7c2109cfa8c36fa10c6baac19b234679606cba00eb6697a052b73b869850673";
-      const FEE = BigInt("31000000000000");
+  //     const ETH_ADDRESS =
+  //       "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
+  //     const POST_CONTRACT =
+  //       "0x7c2109cfa8c36fa10c6baac19b234679606cba00eb6697a052b73b869850673";
+  //     const FEE = BigInt("31000000000000");
 
-      const calls = [
-        {
-          contractAddress: ETH_ADDRESS,
-          entrypoint: "approve",
-          calldata: CallData.compile({
-            spender: POST_CONTRACT,
-            amount: uint256.bnToUint256(FEE),
-          }),
-        },
-        {
-          contractAddress: POST_CONTRACT,
-          entrypoint: "like_post",
-          calldata: myCall.calldata,
-        },
-      ];
-      const { suggestedMaxFee, unit } = await account.estimateInvokeFee(calls);
+  //     const calls = [
+  //       {
+  //         contractAddress: ETH_ADDRESS,
+  //         entrypoint: "approve",
+  //         calldata: CallData.compile({
+  //           spender: POST_CONTRACT,
+  //           amount: uint256.bnToUint256(FEE),
+  //         }),
+  //       },
+  //       {
+  //         contractAddress: POST_CONTRACT,
+  //         entrypoint: "like_post",
+  //         calldata: myCall.calldata,
+  //       },
+  //     ];
+  //     const { suggestedMaxFee, unit } = await account.estimateInvokeFee(calls);
 
-      const likeFee = BigInt("31000000000000");
-      const feeToEth = weiToEth(suggestedMaxFee, 8);
-      const likeFeeToEth = weiToEth(likeFee);
-      setEstimateFee(feeToEth);
-      setPlatformFee(likeFeeToEth);
-    } catch (error) {
-      console.log("estimation error ", error);
-    }
-  };
+  //     const likeFee = BigInt("31000000000000");
+  //     const feeToEth = weiToEth(suggestedMaxFee, 8);
+  //     const likeFeeToEth = weiToEth(likeFee);
+  //     setEstimateFee(feeToEth);
+  //     setPlatformFee(likeFeeToEth);
+  //   } catch (error) {
+  //     console.log("estimation error ", error);
+  //   }
+  // };
 
-  const verifyLike = async () => {
-    setIsModalVisible(true);
-    await estimateLikeFees();
-  };
+  // const verifyLike = async () => {
+  //   setIsModalVisible(true);
+  //   await estimateLikeFees();
+  // };
   // console.log(account);
 
-  const handleClaimPoints = async () => {
-    if (!isReady || !account || !contract || !post) return;
-    Toast.show({
-      type: "info",
-      text1: "Processing Transaction...",
-      position: "top",
-      autoHide: false,
-    });
+  // const handleClaimPoints = async () => {
+  //   if (!isReady || !account || !contract || !post) return;
+  //   Toast.show({
+  //     type: "info",
+  //     text1: "Processing Transaction...",
+  //     position: "top",
+  //     autoHide: false,
+  //   });
 
-    try {
-      const myCall = contract.populate("claim_post_points", [post?.postId]);
+  //   try {
+  //     const myCall = contract.populate("claim_post_points", [post?.postId]);
 
-      const res = await account.execute(myCall);
-      console.log("points claimed", res.transaction_hash);
+  //     const res = await account.execute(myCall);
+  //     console.log("points claimed", res.transaction_hash);
 
-      Toast.hide();
-      Toast.show({
-        type: "success",
-        text1: "Zuri Claimed",
-        text2: "You can now withdraw your points to wallet 🎉",
-      });
+  //     Toast.hide();
+  //     Toast.show({
+  //       type: "success",
+  //       text1: "Zuri Claimed",
+  //       text2: "You can now withdraw your points to wallet 🎉",
+  //     });
 
-      // Alert.alert("Success", "Your post has been created!");
-    } catch (error) {
-      console.error("TX failed ", error);
-      Toast.hide();
-      Toast.show({
-        type: "error",
-        text1: "claim Failed",
-        text2: "Please try again later 😢",
-      });
-    } finally {
-      setIsLoading(false);
-      setClaimModalOpen(false);
-    }
-  };
-  const verifyHandleClaimPoints = async () => {
-    await estimateClaimFees();
-    setClaimModalOpen(true);
-  };
-  const estimateClaimFees = async () => {
-    console.log("estimating");
-    console.log(post);
+  //     // Alert.alert("Success", "Your post has been created!");
+  //   } catch (error) {
+  //     console.error("TX failed ", error);
+  //     Toast.hide();
+  //     Toast.show({
+  //       type: "error",
+  //       text1: "claim Failed",
+  //       text2: "Please try again later 😢",
+  //     });
+  //   } finally {
+  //     setIsLoading(false);
+  //     setClaimModalOpen(false);
+  //   }
+  // };
 
-    if (!account || !isReady || !contract || !post) return;
+  // const verifyHandleClaimPoints = async () => {
+  //   await estimateClaimFees();
+  //   setClaimModalOpen(true);
+  // };
+  // const estimateClaimFees = async () => {
+  //   console.log("estimating");
+  //   console.log(post);
 
-    try {
-      const myCall = contract.populate("claim_post_points", [
-        post?.postId.toString(),
-      ]);
+  //   if (!account || !isReady || !contract || !post) return;
 
-      const { suggestedMaxFee, unit } = await account.estimateInvokeFee({
-        contractAddress: CONTRACT_ADDRESS,
-        entrypoint: "claim_post_points",
-        calldata: myCall.calldata,
-      });
+  //   try {
+  //     const myCall = contract.populate("claim_post_points", [
+  //       post?.postId.toString(),
+  //     ]);
 
-      const feeToEth = weiToEth(suggestedMaxFee, 8);
+  //     const { suggestedMaxFee, unit } = await account.estimateInvokeFee({
+  //       contractAddress: CONTRACT_ADDRESS,
+  //       entrypoint: "claim_post_points",
+  //       calldata: myCall.calldata,
+  //     });
 
-      console.log("estimation done");
-      console.log("estimatedFee", suggestedMaxFee.toString());
-      console.log("unit ", unit.toString());
-      setEstimateFee(feeToEth);
-      setPlatformFee("0.00");
-    } catch (err) {
-      console.error("🔥 Estimation failed:", err);
-    }
-  };
+  //     const feeToEth = weiToEth(suggestedMaxFee, 8);
 
-  const handleLike = async () => {
-    if (!isReady || !account || !contract) return;
+  //     console.log("estimation done");
+  //     console.log("estimatedFee", suggestedMaxFee.toString());
+  //     console.log("unit ", unit.toString());
+  //     setEstimateFee(feeToEth);
+  //     setPlatformFee("0.00");
+  //   } catch (err) {
+  //     console.error("🔥 Estimation failed:", err);
+  //   }
+  // };
 
-    Toast.show({
-      type: "info",
-      text1: "Processing Transaction...",
-      position: "top",
-      autoHide: false,
-    });
+  // const handleLike = async () => {
+  //   if (!isReady || !account || !contract) return;
 
-    const ETH_ADDRESS =
-      "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
-    const POST_CONTRACT =
-      "0x7c2109cfa8c36fa10c6baac19b234679606cba00eb6697a052b73b869850673";
-    const FEE = BigInt("31000000000000");
+  //   Toast.show({
+  //     type: "info",
+  //     text1: "Processing Transaction...",
+  //     position: "top",
+  //     autoHide: false,
+  //   });
 
-    const myCall = contract.populate("like_post", [post.postId]);
+  //   const ETH_ADDRESS =
+  //     "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
+  //   const POST_CONTRACT =
+  //     "0x7c2109cfa8c36fa10c6baac19b234679606cba00eb6697a052b73b869850673";
+  //   const FEE = BigInt("31000000000000");
 
-    const calls = [
-      {
-        contractAddress: ETH_ADDRESS,
-        entrypoint: "approve",
-        calldata: CallData.compile({
-          spender: POST_CONTRACT,
-          amount: uint256.bnToUint256(FEE),
-        }),
-      },
-      {
-        contractAddress: POST_CONTRACT,
-        entrypoint: "like_post",
-        calldata: myCall.calldata,
-      },
-    ];
+  //   const myCall = contract.populate("like_post", [post.postId]);
 
-    try {
-      const res = await account.execute(calls);
-      console.log("Transaction sent!", res.transaction_hash);
+  //   const calls = [
+  //     {
+  //       contractAddress: ETH_ADDRESS,
+  //       entrypoint: "approve",
+  //       calldata: CallData.compile({
+  //         spender: POST_CONTRACT,
+  //         amount: uint256.bnToUint256(FEE),
+  //       }),
+  //     },
+  //     {
+  //       contractAddress: POST_CONTRACT,
+  //       entrypoint: "like_post",
+  //       calldata: myCall.calldata,
+  //     },
+  //   ];
 
-      Toast.hide();
-      Toast.show({
-        type: "success",
-        text1: "Like successful!",
-        text2: "Your like now counts 🎉",
-      });
-    } catch (err) {
-      console.error("TX failed:", err);
-      Toast.show({
-        type: "error",
-        text1: "like Failed",
-        text2: "Please try again later 😢",
-      });
-    } finally {
-      setIsModalVisible(false);
-    }
-  };
+  //   try {
+  //     const res = await account.execute(calls);
+  //     console.log("Transaction sent!", res.transaction_hash);
+
+  //     Toast.hide();
+  //     Toast.show({
+  //       type: "success",
+  //       text1: "Like successful!",
+  //       text2: "Your like now counts 🎉",
+  //     });
+  //   } catch (err) {
+  //     console.error("TX failed:", err);
+  //     Toast.show({
+  //       type: "error",
+  //       text1: "like Failed",
+  //       text2: "Please try again later 😢",
+  //     });
+  //   } finally {
+  //     setIsModalVisible(false);
+  //   }
+  // };
   return (
     <View>
       {/* Rewards Section */}
@@ -203,7 +204,7 @@ const PostFooter = ({ post }) => {
           </View>
           {caller == address && post?.zuri_points.toString() != "0" && (
             <Pressable
-              onPress={verifyHandleClaimPoints}
+              onPress={handleClaimPoints}
               style={({ pressed }) => [
                 {
                   backgroundColor: pressed ? "#166ac7" : "#1f87fc", // darker shade on press
@@ -232,7 +233,7 @@ const PostFooter = ({ post }) => {
 
       {/* Action Buttons */}
       <View style={styles.actionsContainer}>
-        <TouchableOpacity style={styles.actionButton} onPress={verifyLike}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
           <Text
             style={[
               styles.actionIcon,
@@ -259,23 +260,23 @@ const PostFooter = ({ post }) => {
         </TouchableOpacity>
       </View>
 
-      <ConfirmPostModal
+      {/* <ConfirmPostModal
         gasFee={estimateFee}
         platformFee={platformFee}
         message=""
         onCancel={() => setIsModalVisible(false)}
         onConfirm={handleLike}
         visible={isModalVisible}
-      />
+      /> */}
 
-      <ConfirmPostModal
+      {/* <ConfirmPostModal
         gasFee={estimateFee}
         platformFee={platformFee}
         message=""
         onCancel={() => setClaimModalOpen(false)}
         onConfirm={handleClaimPoints}
         visible={claimModalOpen}
-      />
+      /> */}
 
       {/* Call to Action Buttons */}
       {/* <View style={styles.ctaContainer}>
