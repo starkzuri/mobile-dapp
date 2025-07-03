@@ -415,6 +415,8 @@ const SinglePostPage = () => {
     }
   };
 
+  // console.log(posts?.images);
+
   useEffect(() => {
     if (contract) {
       view_post();
@@ -458,20 +460,22 @@ const SinglePostPage = () => {
           </Markdown>
         </View>
 
-        {/* {console.log(posts.images)} */}
+        {console.log(posts.images.split(" "))}
 
         {/* Images */}
         <View style={styles.imagesContainer}>
           <View style={styles.imageGrid}>
-            {/* {console.log(posts?.images)} */}
-            {posts?.images.split(" ").map((image, index) => (
-              <Image
-                key={index}
-                source={{ uri: image.trim() }}
-                style={styles.postImage}
-                resizeMode="cover"
-              />
-            ))}
+            {posts?.images
+              .trim()
+              .split(/\s+/)
+              .map((image, index) => (
+                <Image
+                  key={index}
+                  source={{ uri: image.trim() }}
+                  style={styles.postImage}
+                  resizeMode="cover"
+                />
+              ))}
           </View>
         </View>
 
@@ -634,6 +638,7 @@ const styles = StyleSheet.create({
   imageGrid: {
     flexDirection: "row",
     gap: 8,
+    flexWrap: "wrap",
   },
   postImage: {
     width: (width - 40) / 2,

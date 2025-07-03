@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { decryptWithPassword } from "@/utils/cryptotest";
+
 export default function Login() {
   const router = useRouter();
   const [email, setEmail] = useState("");

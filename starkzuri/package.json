@@ -5,46 +5,59 @@
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint"
   },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": [
+          "bignumber.js",
+          "ipfs-http-client",
+          "mime",
+          "starknet",
+          "turndown"
+        ]
+      }
+    }
+  },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
-    "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-async-storage/async-storage": "2.1.2",
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",
     "bignumber.js": "^9.3.0",
     "crypto-js": "^4.2.0",
-    "expo": "~53.0.9",
-    "expo-av": "~15.1.6",
+    "expo": "53.0.16",
+    "expo-av": "~15.1.7",
     "expo-blur": "~14.1.4",
+    "expo-clipboard": "~7.1.5",
     "expo-constants": "~17.1.6",
     "expo-document-picker": "^13.1.6",
     "expo-font": "~13.3.1",
     "expo-haptics": "~14.1.4",
-    "expo-image": "~2.1.7",
+    "expo-image": "~2.3.2",
     "expo-image-picker": "~16.1.4",
     "expo-linear-gradient": "^14.1.5",
-    "expo-linking": "~7.1.5",
+    "expo-linking": "~7.1.6",
     "expo-media-library": "~17.1.7",
-    "expo-random": "^14.0.1",
-    "expo-router": "~5.0.7",
+    "expo-router": "~5.1.2",
     "expo-splash-screen": "~0.30.8",
     "expo-status-bar": "~2.2.3",
     "expo-symbols": "~0.4.4",
-    "expo-system-ui": "~5.0.7",
+    "expo-system-ui": "~5.0.10",
     "expo-video-thumbnails": "~9.1.3",
-    "expo-web-browser": "~14.1.6",
+    "expo-web-browser": "~14.2.0",
     "ipfs-http-client": "^60.0.1",
     "lottie-react-native": "7.2.2",
     "lucide-react-native": "^0.513.0",
     "mime": "^4.0.7",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "react-native": "0.79.2",
+    "react-native": "0.79.5",
     "react-native-dotenv": "^3.4.11",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-image-picker": "^8.2.1",
@@ -60,13 +73,17 @@
     "starknet": "^6.24.1",
     "turndown": "^7.2.0",
     "zustand": "^5.0.5",
-    "expo-clipboard": "~7.1.5"
+    "expo-localization": "~16.1.6"
+  },
+  "overrides": {
+    "@expo/config-plugins": "~10.0.3"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@types/crypto-js": "^4.2.2",
     "@types/react": "~19.0.10",
     "@types/turndown": "^5.0.5",
+    "eas-cli": "^16.13.3",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~9.2.0",
     "typescript": "~5.8.3"

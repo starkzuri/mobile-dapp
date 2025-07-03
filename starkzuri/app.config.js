@@ -11,6 +11,7 @@ export default {
         projectId: "c8a62244-ddce-4c68-9e8b-7295f13c67af",
       },
     },
+    plugins: ["expo-localization"],
     orientation: "portrait",
     icon: "./assets/images/ST4.png",
     scheme: "starkzuri",

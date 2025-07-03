@@ -1,6 +1,8 @@
 {
   "build": {
-    "production": {
+    "alpha": {
+      "developmentClient": false,
+      "distribution": "internal",
       "android": {
         "buildType": "apk"
       }
