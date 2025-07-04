@@ -139,6 +139,7 @@
 import { BigNumber } from "bignumber.js";
 import { shortString, uint256, Provider, Contract } from "starknet";
 import { NODE_URL } from "./constants";
+import { emojiMap, asciiToEmojiMap } from "./EmojiAscii";
 
 /**
  * Convert bigint string to decoded short string
@@ -262,10 +263,20 @@ export function timeAgo(timestamp: number | bigint): string {
  * Converts multiline string into single line with HTML
  */
 export function multilineToSingleline(multilineString: string): string {
-  return multilineString
+  const withHtml = multilineString
     .replace(/\n/g, "<br />")
     .replace(/\*(.*?)\*/g, "<b>$1</b>") // bold
     .replace(/^\s*-\s*(.*?)$/gm, "<li>$1</li>"); // list items
+
+  // Replace emojis with their ASCII equivalents
+  const withEmojisReplaced = withHtml.replace(
+    /[\u{1F300}-\u{1FAFF}|\u{2600}-\u{26FF}|\u{2700}-\u{27BF}|\u{1F1E6}-\u{1F1FF}]/gu,
+    (match) => {
+      return emojiMap[match] || match;
+    }
+  );
+
+  return withEmojisReplaced;
 }
 
 /**
@@ -323,6 +334,37 @@ export function truncateAddress(
   return `${firstPart}...${lastPart}`;
 }
 
+// export function htmlToMarkdown(html: string): string {
+//   let markdown = html;
+
+//   // Line breaks
+//   markdown = markdown.replace(/<br\s*\/?>/gi, "\n");
+
+//   // Bold text
+//   markdown = markdown.replace(/<b>(.*?)<\/b>/gi, "**$1**");
+//   markdown = markdown.replace(/<strong>(.*?)<\/strong>/gi, "**$1**");
+
+//   // Italic text
+//   markdown = markdown.replace(/<i>(.*?)<\/i>/gi, "*$1*");
+//   markdown = markdown.replace(/<em>(.*?)<\/em>/gi, "*$1*");
+
+//   // Links
+//   markdown = markdown.replace(/<a\s+href="(.*?)">(.*?)<\/a>/gi, "[$2]($1)");
+
+//   // List items
+//   markdown = markdown.replace(/<li>(.*?)<\/li>/gi, "- $1");
+//   markdown = markdown.replace(/<\/ul>|<\/ol>/gi, "");
+//   markdown = markdown.replace(/<ul>|<ol>/gi, "\n");
+
+//   // Remove all other tags
+//   markdown = markdown.replace(/<[^>]+>/g, "");
+
+//   // Clean up multiple line breaks
+//   markdown = markdown.replace(/\n{3,}/g, "\n\n");
+
+//   return markdown.trim();
+// }
+
 export function htmlToMarkdown(html: string): string {
   let markdown = html;
 
@@ -350,6 +392,13 @@ export function htmlToMarkdown(html: string): string {
 
   // Clean up multiple line breaks
   markdown = markdown.replace(/\n{3,}/g, "\n\n");
+
+  // Replace ASCII with emojis
+  for (const [ascii, emoji] of Object.entries(asciiToEmojiMap)) {
+    const escapedAscii = ascii.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"); // escape for regex
+    const regex = new RegExp(escapedAscii, "g");
+    markdown = markdown.replace(regex, emoji);
+  }
 
   return markdown.trim();
 }

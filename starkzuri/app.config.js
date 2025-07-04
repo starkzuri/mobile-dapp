@@ -11,6 +11,9 @@ export default {
         projectId: "c8a62244-ddce-4c68-9e8b-7295f13c67af",
       },
     },
+    ios: {
+      bundleIdentifier: "com.felix.starkzuri",
+    },
     plugins: ["expo-localization"],
     orientation: "portrait",
     icon: "./assets/images/ST4.png",
@@ -41,7 +44,7 @@ export default {
           image: "./assets/images/ST4.png",
           imageWidth: 200,
           resizeMode: "contain",
-          backgroundColor: "#ffffff",
+          backgroundColor: "#0a0a0a",
         },
       ],
     ],

@@ -23,13 +23,10 @@ import {
   Star,
   Zap,
 } from "lucide-react-native";
-import Toast from "react-native-toast-message";
-import RewardCards from "@/components/RewardCard";
 import { useAppContext } from "@/providers/AppProvider";
-import { bigintToLongAddress, bigintToShortStr } from "@/utils/AppUtils";
+import { bigintToShortStr } from "@/utils/AppUtils";
 import MiniFunctions from "@/utils/MiniFunctions";
 import ProfileUpdateComponent from "@/components/UpdateUser";
-import ConfirmPostModal from "@/components/PostConfirmationModal";
 import * as Clipboard from "expo-clipboard";
 
 const { width } = Dimensions.get("window");

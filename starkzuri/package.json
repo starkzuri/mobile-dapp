@@ -31,6 +31,7 @@
     "@react-navigation/native": "^7.1.6",
     "bignumber.js": "^9.3.0",
     "crypto-js": "^4.2.0",
+    "dotenv": "^17.0.1",
     "expo": "53.0.16",
     "expo-av": "~15.1.7",
     "expo-blur": "~14.1.4",
@@ -43,6 +44,7 @@
     "expo-image-picker": "~16.1.4",
     "expo-linear-gradient": "^14.1.5",
     "expo-linking": "~7.1.6",
+    "expo-localization": "~16.1.6",
     "expo-media-library": "~17.1.7",
     "expo-router": "~5.1.2",
     "expo-splash-screen": "~0.30.8",
@@ -73,17 +75,14 @@
     "starknet": "^6.24.1",
     "turndown": "^7.2.0",
     "zustand": "^5.0.5",
-    "expo-localization": "~16.1.6"
-  },
-  "overrides": {
-    "@expo/config-plugins": "~10.0.3"
+    "react-native-svg": "15.11.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@expo/config-plugins": "~10.1.1",
     "@types/crypto-js": "^4.2.2",
     "@types/react": "~19.0.10",
     "@types/turndown": "^5.0.5",
-    "eas-cli": "^16.13.3",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~9.2.0",
     "typescript": "~5.8.3"
