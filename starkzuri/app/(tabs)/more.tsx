@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,9 +10,17 @@ import {
   Alert,
   RefreshControl,
   Dimensions,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
-import { Redirect, useRouter } from "expo-router";
+import { Redirect, useRouter, useFocusEffect } from "expo-router";
+import Toast from "react-native-toast-message";
+import ConfirmPostModal from "@/components/PostConfirmationModal";
+import { CallData } from "starknet";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Linking from "expo-linking";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MiniFunctions from "@/utils/MiniFunctions";
 import { useAppContext } from "@/providers/AppProvider";
@@ -27,16 +35,27 @@ const IconWrapper = ({ children, color, size = 24 }) => (
 
 const StarkZuriMoreTab = () => {
   const [recentReward, setRecentReward] = useState(null);
-  const { account, address, contract } = useAppContext();
+  const { account, address, contract, isReady } = useAppContext();
   const router = useRouter();
   const [ethbalance, setEthBalance] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  // console.log(ethbalance);
+
+  // Wallet modal states
+  const [walletModalVisible, setWalletModalVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState("withdraw"); // 'withdraw' or 'transfer'
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [transferAmount, setTransferAmount] = useState("");
+  const [recipientAddress, setRecipientAddress] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+
+  // estimate and platform fee
+  const [estimateFee, setEstimateFee] = useState("0.00");
+  const [platformFee, setPlatformFee] = useState("0.00");
 
   const glowAnimation = useRef(new Animated.Value(0)).current;
   const pulseAnimation = useRef(new Animated.Value(1)).current;
   const rewardAnimation = useRef(new Animated.Value(0)).current;
-  // const user = MiniFunctions(address);
   const [user, setUser] = useState(null);
 
   const fetchUser = async () => {
@@ -66,20 +85,19 @@ const StarkZuriMoreTab = () => {
   const handleRefresh = async () => {
     setRefreshing(true);
     await getGasBalance();
-    // You can add more data fetching here if needed
     setRefreshing(false);
   };
 
-  useEffect(() => {
-    fetchUser();
-    getGasBalance();
-  }, [contract, address]);
-  useEffect(() => {
-    getGasBalance();
-  }, [user]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchUser();
+      getGasBalance();
 
-  // console.log(ethbalance);
-  // console.log(user);
+      return () => {
+        // Optional cleanup if needed
+      };
+    }, [contract, account])
+  );
 
   // Animate glow effect
   useEffect(() => {
@@ -102,78 +120,19 @@ const StarkZuriMoreTab = () => {
     return () => glowSequence.stop();
   }, []);
 
-  // Simulate recent rewards
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     const rewards = [12.5, 8.3, 15.7, 6.2, 23.1];
-  //     const randomReward = rewards[Math.floor(Math.random() * rewards.length)];
-  //     setRecentReward(randomReward);
-
-  //     // Animate reward popup
-  //     Animated.sequence([
-  //       Animated.timing(rewardAnimation, {
-  //         toValue: 1,
-  //         duration: 500,
-  //         useNativeDriver: true,
-  //       }),
-  //       Animated.delay(2500),
-  //       Animated.timing(rewardAnimation, {
-  //         toValue: 0,
-  //         duration: 500,
-  //         useNativeDriver: true,
-  //       }),
-  //     ]).start(() => setRecentReward(null));
-
-  //     // Pulse effect
-  //     Animated.sequence([
-  //       Animated.timing(pulseAnimation, {
-  //         toValue: 1.05,
-  //         duration: 300,
-  //         useNativeDriver: true,
-  //       }),
-  //       Animated.timing(pulseAnimation, {
-  //         toValue: 1,
-  //         duration: 300,
-  //         useNativeDriver: true,
-  //       }),
-  //     ]).start();
-  //   }, 8000);
-
-  //   return () => clearInterval(interval);
-  // }, []);
-
   const menuItems = [
-    // {
-    //   icon: "👥",
-    //   title: "Invite Friends",
-    //   subtitle: "Earn 50 $ZURI per referral",
-    //   color: "#1f87fc",
-    // },
-    // {
-    //   icon: "👑",
-    //   title: "Upgrade to Premium",
-    //   subtitle: "Unlock exclusive features",
-    //   color: "#ffd700",
-    //   badge: "PRO",
-    // },
-    // {
-    //   icon: "⚙️",
-    //   title: "App Settings",
-    //   subtitle: "Notifications, language, theme",
-    //   color: "#8b5cf6",
-    // },
-    // {
-    //   icon: "❓",
-    //   title: "Help & Support",
-    //   subtitle: "FAQs and contact support",
-    //   color: "#10b981",
-    // },
-    // {
-    //   icon: "📄",
-    //   title: "Whitepaper / Tokenomics",
-    //   subtitle: "Learn about $ZURI economics",
-    //   color: "#f59e0b",
-    // },
+    {
+      icon: "❓",
+      title: "Join Telegram",
+      subtitle: "Join our telegram",
+      color: "#10b981",
+    },
+    {
+      icon: "📄",
+      title: "Explore",
+      subtitle: "Explore Zuri",
+      color: "#f59e0b",
+    },
     {
       icon: "✖️",
       title: "Follow us on X",
@@ -195,23 +154,168 @@ const StarkZuriMoreTab = () => {
   ];
 
   const handleWithdraw = () => {
-    Alert.alert(
-      "Withdraw $ZURI",
-      "Your tokens will be sent to your connected wallet. This may take a few minutes.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Confirm", onPress: () => console.log("Withdrawal initiated") },
-      ]
-    );
+    setWalletModalVisible(true);
+    setActiveTab("withdraw");
+  };
+
+  const estimateWithdrawFees = useCallback(async () => {
+    console.log(withdrawAmount);
+    if (!account || !isReady || !contract) return;
+    Toast.show({
+      type: "info",
+      text1: "Processing Transaction...",
+      position: "top",
+      autoHide: false,
+    });
+
+    try {
+      const myCall = contract.populate("withdraw_zuri_points", [
+        withdrawAmount,
+      ]);
+      const POST_CONTRACT =
+        "0x7c2109cfa8c36fa10c6baac19b234679606cba00eb6697a052b73b869850673";
+
+      const calls = {
+        contractAddress: POST_CONTRACT,
+        entrypoint: "withdraw_zuri_points",
+        calldata: myCall.calldata,
+      };
+      const { suggestedMaxFee } = await account.estimateInvokeFee(calls);
+
+      setEstimateFee(weiToEth(suggestedMaxFee, 8));
+
+      setWithdrawModalOpen(true);
+    } catch (error) {
+      console.error("Fee estimation error:", error);
+      Toast.show({
+        type: "error",
+        text1: "Fee Estimation Failed",
+        text2: "Please try again",
+      });
+    }
+  }, [account, isReady, contract]);
+
+  const withdrawzuri = async () => {
+    if (!account || !isReady || !contract) return;
+
+    try {
+      const myCall = contract.populate("withdraw_zuri_points", [
+        withdrawAmount,
+      ]);
+      const POST_CONTRACT =
+        "0x7c2109cfa8c36fa10c6baac19b234679606cba00eb6697a052b73b869850673";
+
+      const res = await account.execute(myCall);
+      console.log("Points claimed", res.transaction_hash);
+      Toast.hide();
+      Toast.show({
+        type: "success",
+        text1: "Withdrawal successful",
+        text2: "zuri has been withdrawn successfuly to your wallet 🎉",
+      });
+      setWithdrawModalOpen(false);
+      setWithdrawAmount("");
+      fetchUser();
+    } catch (e) {
+      console.error("Claim transaction failed:", e);
+      Toast.hide();
+      Toast.show({
+        type: "error",
+        text1: "withdrawal Failed",
+        text2: "Please try again later 😢",
+      });
+    }
+  };
+
+  const handleWithdrawZuri = async () => {
+    if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) {
+      Alert.alert("Error", "Please enter a valid withdrawal amount");
+      return;
+    }
+
+    const amount = parseFloat(withdrawAmount);
+    if (amount > user?.zuri_points) {
+      Alert.alert("Error", "Insufficient ZURI balance");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      // Simulate withdrawal process
+      // await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      estimateWithdrawFees();
+    } catch (error) {
+      Alert.alert("Error", "Withdrawal failed. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleTransferEth = async () => {
+    if (!transferAmount || parseFloat(transferAmount) <= 0) {
+      Alert.alert("Error", "Please enter a valid transfer amount");
+      return;
+    }
+
+    if (!recipientAddress || recipientAddress.length < 10) {
+      Alert.alert("Error", "Please enter a valid recipient address");
+      return;
+    }
+
+    const amount = parseFloat(transferAmount);
+    if (amount > parseFloat(ethbalance)) {
+      Alert.alert("Error", "Insufficient ETH balance");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      // Simulate transfer process
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      Alert.alert(
+        "Success",
+        `${amount} ETH will be sent to ${recipientAddress}`,
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              setTransferAmount("");
+              setRecipientAddress("");
+              setWalletModalVisible(false);
+              // Refresh balance
+              getGasBalance();
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      Alert.alert("Error", "Transfer failed. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleLogOut = async () => {
     console.log("logging out");
     await AsyncStorage.multiRemove(["privateKey", "accountAddress"]);
-
     return router.replace("/login");
   };
+
   const handleReportBug = () => {};
+
+  const handleFollowTwitter = () => {
+    Linking.openURL("https://x.com/starkzuri01");
+  };
+
+  const handleJoinDiscord = () => {
+    Linking.openURL("https://discord.gg/mcRse4T9x2");
+  };
+
+  const handleJoinTelegram = () => {
+    Linking.openURL("https://t.me/starkzuri");
+  };
 
   const handleMenuItemPress = (title) => {
     console.log(title);
@@ -221,6 +325,15 @@ const StarkZuriMoreTab = () => {
         break;
       case "Report Bug / Feedback":
         handleReportBug();
+        break;
+      case "Follow us on X":
+        handleFollowTwitter();
+        break;
+      case "Join Discord":
+        handleJoinDiscord();
+        break;
+      case "Join Telegram":
+        handleJoinTelegram();
         break;
     }
   };
@@ -318,11 +431,20 @@ const StarkZuriMoreTab = () => {
               style={styles.withdrawButton}
               onPress={handleWithdraw}
             >
-              <Text style={styles.withdrawButtonText}>Withdraw</Text>
+              <Text style={styles.withdrawButtonText}>Manage Wallet</Text>
               <Text style={styles.withdrawIcon}>↗</Text>
             </TouchableOpacity>
           </Animated.View>
         </Animated.View>
+
+        <ConfirmPostModal
+          gasFee={estimateFee}
+          platformFee={platformFee}
+          message=""
+          onCancel={() => setWithdrawModalOpen(false)}
+          onConfirm={withdrawzuri}
+          visible={withdrawModalOpen}
+        />
 
         {/* Menu Items */}
         <View style={styles.menuContainer}>
@@ -358,6 +480,172 @@ const StarkZuriMoreTab = () => {
           <Text style={styles.footerSubtext}>Built on Starknet</Text>
         </View>
       </ScrollView>
+
+      {/* Wallet Management Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={walletModalVisible}
+        onRequestClose={() => setWalletModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalContainer}
+          >
+            <View style={styles.modalContent}>
+              {/* Modal Header */}
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Wallet Management</Text>
+                <TouchableOpacity
+                  onPress={() => setWalletModalVisible(false)}
+                  style={styles.closeButton}
+                >
+                  <Text style={styles.closeButtonText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Tab Navigation */}
+              <View style={styles.tabContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.tab,
+                    activeTab === "withdraw" && styles.activeTab,
+                  ]}
+                  onPress={() => setActiveTab("withdraw")}
+                >
+                  <Text
+                    style={[
+                      styles.tabText,
+                      activeTab === "withdraw" && styles.activeTabText,
+                    ]}
+                  >
+                    Withdraw ZURI
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.tab,
+                    activeTab === "transfer" && styles.activeTab,
+                  ]}
+                  onPress={() => setActiveTab("transfer")}
+                >
+                  <Text
+                    style={[
+                      styles.tabText,
+                      activeTab === "transfer" && styles.activeTabText,
+                    ]}
+                  >
+                    Transfer ETH
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Tab Content */}
+              {activeTab === "withdraw" ? (
+                <View style={styles.tabContent}>
+                  <Text style={styles.balanceInfo}>
+                    Available: {user?.zuri_points?.toLocaleString()} ZURI
+                  </Text>
+
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.inputLabel}>Withdrawal Amount</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={withdrawAmount}
+                      onChangeText={setWithdrawAmount}
+                      placeholder="Enter amount"
+                      placeholderTextColor="#666"
+                      keyboardType="numeric"
+                    />
+                  </View>
+
+                  {/* <View style={styles.quickAmountContainer}>
+                    <Text style={styles.quickAmountLabel}>Quick amounts:</Text>
+                    <View style={styles.quickAmountButtons}>
+                      {[25, 50, 75, 100].map((percentage) => (
+                        <TouchableOpacity
+                          key={percentage}
+                          style={styles.quickAmountButton}
+                          onPress={() =>
+                            setWithdrawAmount(
+                              (
+                                ((user?.zuri_points || 0) * percentage) /
+                                100
+                              ).toString()
+                            )
+                          }
+                        >
+                          <Text style={styles.quickAmountButtonText}>
+                            {percentage}%
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View> */}
+
+                  <TouchableOpacity
+                    style={[
+                      styles.actionButton,
+                      isProcessing && styles.disabledButton,
+                    ]}
+                    onPress={handleWithdrawZuri}
+                    disabled={isProcessing}
+                  >
+                    <Text style={styles.actionButtonText}>
+                      {isProcessing ? "Processing..." : "Withdraw ZURI"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.tabContent}>
+                  <Text style={styles.balanceInfo}>
+                    Available: {ethbalance} ETH
+                  </Text>
+
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.inputLabel}>Transfer Amount (ETH)</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={transferAmount}
+                      onChangeText={setTransferAmount}
+                      placeholder="Enter ETH amount"
+                      placeholderTextColor="#666"
+                      keyboardType="numeric"
+                    />
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.inputLabel}>Recipient Address</Text>
+                    <TextInput
+                      style={[styles.input, styles.addressInput]}
+                      value={recipientAddress}
+                      onChangeText={setRecipientAddress}
+                      placeholder="Enter recipient wallet address"
+                      placeholderTextColor="#666"
+                      multiline={true}
+                      numberOfLines={2}
+                    />
+                  </View>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.actionButton,
+                      isProcessing && styles.disabledButton,
+                    ]}
+                    onPress={handleTransferEth}
+                    disabled={isProcessing}
+                  >
+                    <Text style={styles.actionButtonText}>
+                      {isProcessing ? "Processing..." : "Transfer ETH"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -556,6 +844,146 @@ const styles = StyleSheet.create({
   footerSubtext: {
     fontSize: 12,
     color: "#444444",
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    justifyContent: "flex-end",
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#1a1a1a",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 40,
+    minHeight: "70%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#333333",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  tabContainer: {
+    flexDirection: "row",
+    backgroundColor: "#333333",
+    borderRadius: 12,
+    marginBottom: 24,
+    padding: 4,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+    borderRadius: 8,
+  },
+  activeTab: {
+    backgroundColor: "#1f87fc",
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#666666",
+  },
+  activeTabText: {
+    color: "#ffffff",
+  },
+  tabContent: {
+    flex: 1,
+  },
+  balanceInfo: {
+    fontSize: 16,
+    color: "#1f87fc",
+    marginBottom: 24,
+    textAlign: "center",
+    fontWeight: "600",
+  },
+  inputContainer: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 16,
+    color: "#ffffff",
+    marginBottom: 8,
+    fontWeight: "600",
+  },
+  input: {
+    backgroundColor: "#333333",
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#444444",
+  },
+  addressInput: {
+    minHeight: 60,
+    textAlignVertical: "top",
+  },
+  quickAmountContainer: {
+    marginBottom: 24,
+  },
+  quickAmountLabel: {
+    fontSize: 14,
+    color: "#666666",
+    marginBottom: 12,
+  },
+  quickAmountButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  quickAmountButton: {
+    backgroundColor: "#333333",
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: "#444444",
+  },
+  quickAmountButtonText: {
+    color: "#1f87fc",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  actionButton: {
+    backgroundColor: "#1f87fc",
+    borderRadius: 12,
+    padding: 16,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  disabledButton: {
+    backgroundColor: "#666666",
+    opacity: 0.6,
+  },
+  actionButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
 

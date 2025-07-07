@@ -1,6 +1,6 @@
 //
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,8 +10,10 @@ import {
   StyleSheet,
   Dimensions,
   Animated,
+  FlatList,
   RefreshControl,
 } from "react-native";
+import { useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppContext } from "@/providers/AppProvider";
 import MiniFunctions from "@/utils/MiniFunctions";
@@ -81,15 +83,21 @@ const StarkZuriNotifications = () => {
       });
   };
 
-  useEffect(() => {
-    fetchNotifications();
-    // setNotifications(sampleNotifications);
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 800,
-      useNativeDriver: true,
-    }).start();
-  }, [contract, account]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchNotifications(); // works correctly
+
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }).start();
+
+      return () => {
+        // Optional cleanup if needed
+      };
+    }, [contract, account])
+  );
 
   const getNotificationIcon = (type) => {
     switch (type) {
@@ -239,31 +247,27 @@ const StarkZuriNotifications = () => {
         </TouchableOpacity>
       </View>
 
-      <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-        <ScrollView
-          style={styles.scrollView}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="#1f87fc"
-              colors={["#1f87fc"]}
-            />
-          }
-          showsVerticalScrollIndicator={false}
-        >
-          {notifications.map((notification, index) => (
+      <Animated.View
+        style={[{ flex: 1 }, styles.content, { opacity: fadeAnim }]}
+      >
+        <FlatList
+          data={notifications}
+          keyExtractor={(_, index) => index.toString()}
+          renderItem={({ item }) => (
             <RenderNotification
-              key={index}
+              notification={item}
               markAsRead={markAsRead}
               formatTimestamp={formatTimestamp}
               getNotificationIcon={getNotificationIcon}
               getNotificationColor={getNotificationColor}
-              notification={notification}
               extractZuriPoints={extractZuriPoints}
             />
-          ))}
-        </ScrollView>
+          )}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollView}
+        />
       </Animated.View>
     </SafeAreaView>
   );
@@ -303,7 +307,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollView: {
-    flex: 1,
+    // r
   },
   notificationCard: {
     backgroundColor: "#111111",
