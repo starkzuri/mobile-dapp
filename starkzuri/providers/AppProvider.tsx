@@ -217,7 +217,13 @@ const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
       if (!pk || !addr) return;
 
       const _provider = new Provider({ nodeUrl: NODE_URL });
-      const _account = new Account(_provider, addr, pk);
+      const _account = new Account(
+        _provider,
+        addr,
+        pk,
+        undefined,
+        "0x100000000000000000000000000000001"
+      );
 
       setProvider(_provider);
       setAccount(_account);

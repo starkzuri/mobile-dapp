@@ -11,12 +11,14 @@ import {
   Alert,
   Dimensions,
 } from "react-native";
+import Markdown from "react-native-markdown-display";
 import MiniFunctions from "@/utils/MiniFunctions";
 import styles from "@/styles/comments";
 import {
   bigintToLongAddress,
   bigintToShortStr,
   timeAgo,
+  htmlToMarkdown,
 } from "@/utils/AppUtils";
 
 const CommentItem = ({ item, handleLike, handleReward, handleAddReply }) => {
@@ -66,7 +68,18 @@ const CommentItem = ({ item, handleLike, handleReward, handleAddReply }) => {
             </View>
           )}
         </View>
-        <Text style={styles.commentText}>{item?.content}</Text>
+        <Text style={styles.commentText}>
+          <Markdown
+            style={{
+              body: { color: "white" },
+              heading1: { color: "white" },
+              bullet_list_icon: { color: "white" },
+              link: { color: "#1f87fc" },
+            }}
+          >
+            {htmlToMarkdown(item?.content)}
+          </Markdown>
+        </Text>
         <View style={styles.commentActions}>
           <TouchableOpacity
             style={styles.actionButton}
