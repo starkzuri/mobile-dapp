@@ -145,6 +145,7 @@ import { ABI, CONTRACT_ADDRESS } from "./abi";
 import { NODE_URL } from "../utils/constants";
 
 type ViewUserFn = (address: string) => Promise<any> | void;
+type ReInitFn = () => Promise<any> | void;
 
 interface AppContextType {
   address: string | null;
@@ -153,6 +154,7 @@ interface AppContextType {
   account: AccountInterface | null;
   isReady: boolean;
   viewUser: ViewUserFn;
+  reInit: ReInitFn;
 }
 
 const initialData: AppContextType = {
@@ -162,6 +164,7 @@ const initialData: AppContextType = {
   account: null,
   isReady: false,
   viewUser: () => {},
+  reInit: () => {},
 };
 
 const AppContext = createContext<AppContextType>(initialData);
@@ -173,6 +176,8 @@ const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const [provider, setProvider] = useState<ProviderInterface | null>(null);
   const [account, setAccount] = useState<AccountInterface | null>(null);
   const [isReady, setIsReady] = useState(false);
+
+  const reInit = () => init();
 
   const connectContract = (_provider: ProviderInterface) => {
     try {
@@ -212,7 +217,13 @@ const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
       if (!pk || !addr) return;
 
       const _provider = new Provider({ nodeUrl: NODE_URL });
-      const _account = new Account(_provider, addr, pk);
+      const _account = new Account(
+        _provider,
+        addr,
+        pk,
+        undefined,
+        "0x100000000000000000000000000000001"
+      );
 
       setProvider(_provider);
       setAccount(_account);
@@ -237,8 +248,9 @@ const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
       account,
       isReady,
       viewUser,
+      reInit,
     }),
-    [address, contract, provider, account, isReady, viewUser]
+    [address, contract, provider, account, isReady, viewUser, reInit]
   );
 
   return <AppContext.Provider value={appValue}>{children}</AppContext.Provider>;

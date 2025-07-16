@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAppContext } from "@/providers/AppProvider";
 
 export default function Login() {
   const router = useRouter();
@@ -20,6 +21,7 @@ export default function Login() {
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const { reInit } = useAppContext();
 
   const storeWalletInfo = async (privateKey, accountAddress) => {
     try {
@@ -66,6 +68,7 @@ export default function Login() {
         data?.loggedInUser?.accountAddress
       );
       setIsLoading(false);
+      await reInit();
       router.push("/");
     }
     if (!response.ok) throw new Error(data.error || "something happened");

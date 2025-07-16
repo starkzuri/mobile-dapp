@@ -15,6 +15,7 @@ import { CallData, uint256 } from "starknet";
 import Toast from "react-native-toast-message";
 import ConfirmPostModal from "./PostConfirmationModal";
 import CommentItem from "./CommentItem";
+import { multilineToSingleline } from "@/utils/AppUtils";
 import styles from "@/styles/comments";
 import { CONTRACT_ADDRESS } from "@/providers/abi";
 
@@ -79,10 +80,14 @@ const CommentComponent = ({ postId, initialComments = [] }) => {
   const estimateCommentFee = async () => {
     if (!newComment.trim()) return;
     if (!isReady || !account || !contract) return;
+    const formattedContent = multilineToSingleline(newComment.trim());
     const ETH_ADDRESS =
       "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
     const FEE = BigInt("5900000000000");
-    const myCall = contract.populate("comment_on_post", [postId, newComment]);
+    const myCall = contract.populate("comment_on_post", [
+      postId,
+      formattedContent,
+    ]);
     const calls = [
       {
         contractAddress: ETH_ADDRESS,
@@ -108,6 +113,11 @@ const CommentComponent = ({ postId, initialComments = [] }) => {
       setEstimateFee(feeToEth);
       setPlatformFee(commentFeeToEth);
     } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "comment failure prediction",
+        text2: "error " + error,
+      });
       console.error("some error occured ", error);
     }
   };
@@ -120,6 +130,8 @@ const CommentComponent = ({ postId, initialComments = [] }) => {
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
     if (!isReady || !account || !contract) return;
+    const formattedContent = multilineToSingleline(newComment.trim());
+
     Toast.show({
       type: "info",
       text1: "Processing Transaction...",
@@ -129,7 +141,10 @@ const CommentComponent = ({ postId, initialComments = [] }) => {
     const ETH_ADDRESS =
       "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
     const FEE = BigInt("5900000000000");
-    const myCall = contract.populate("comment_on_post", [postId, newComment]);
+    const myCall = contract.populate("comment_on_post", [
+      postId,
+      formattedContent,
+    ]);
     console.log(myCall.calldata);
     const calls = [
       {
@@ -158,6 +173,7 @@ const CommentComponent = ({ postId, initialComments = [] }) => {
       view_comments();
     } catch (error) {
       console.error("comment failed ", error);
+      Toast.hide();
       Toast.show({
         type: "error",
         text1: "comment Failed",

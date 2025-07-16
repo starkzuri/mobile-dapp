@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Platform,
   Pressable,
   Alert,
+  FlatList,
 } from "react-native";
 import {
   Bell,
@@ -22,12 +23,30 @@ import {
   Calendar,
   Star,
   Zap,
+  FileText,
+  Video,
+  Gift,
+  Eye,
+  Heart,
+  MessageCircle,
+  Share,
+  Play,
+  Clock,
 } from "lucide-react-native";
+import * as VideoThumbnails from "expo-video-thumbnails";
+import Markdown from "react-native-markdown-display";
 import { useAppContext } from "@/providers/AppProvider";
-import { bigintToShortStr } from "@/utils/AppUtils";
+import {
+  bigintToLongAddress,
+  bigintToShortStr,
+  htmlToMarkdown,
+} from "@/utils/AppUtils";
+
 import MiniFunctions from "@/utils/MiniFunctions";
 import ProfileUpdateComponent from "@/components/UpdateUser";
 import * as Clipboard from "expo-clipboard";
+// import { Video } from "expo-av";
+import { handleUrlParams } from "expo-router/build/fork/getStateFromPath-forks";
 
 const { width } = Dimensions.get("window");
 
@@ -45,31 +64,157 @@ type User = {
   zuri_points: number;
 };
 
+type Post = {
+  id: string;
+  content: string;
+  image?: string;
+  likes: number;
+  comments: number;
+  shares: number;
+  timestamp: string;
+  rewardAmount: number;
+  rewardClaimed: boolean;
+};
+
+type VideoPost = {
+  id: string;
+  title: string;
+  thumbnail: string;
+  duration: string;
+  views: number;
+  likes: number;
+  uploadDate: string;
+  rewardAmount: number;
+  rewardClaimed: boolean;
+};
+
+type ItemReel = {
+  reel_id: number;
+  caller: number;
+  likes: number;
+  dislikes: number;
+  comments: number;
+  shares: number;
+  video: string;
+  timestamp: number;
+  description: string;
+  zuri_points: number;
+};
+
 const UserProfile = () => {
   const { account, isReady, contract, address } = useAppContext();
   const user = MiniFunctions(account?.address?.toString());
-  // console.log(account);
   const [modalVisible, setModalVisible] = useState(false);
-
-  // console.log(user);
+  const [activeTab, setActiveTab] = useState("profile");
+  const [accountPosts, setAccountPosts] = useState([]);
+  const [accountReels, setAccountReels] = useState([]);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [thumbnails, setThumbnails] = useState<{ [key: number]: string }>({});
 
-  // Sample user data with BigInt conversion handled
-  const userData = {
-    userId:
-      "3576822344088438784960174474173613065167062044832123606782432014284400833814",
-    name: "Felix Awere", // Decoded from BigInt
-    username: "felabs", // Decoded from BigInt
-    about: "Founder, Stark Zuri",
-    profile_pic:
-      "https://hambre.infura-ipfs.io/ipfs/QmdZ3v9VC3wWcVxAdqADvPGnaKYyYjXDDbL5G7BEVWwv8u",
-    cover_photo:
-      "https://hambre.infura-ipfs.io/ipfs/QmWN4W1bpmxPVnKXgrRwTCU4WtwcFksPw3wgeudN6EqGWR",
-    date_registered: new Date(Number("1720735255") * 1000),
-    no_of_followers: "14",
-    number_following: "7",
-    notifications: "95",
-    zuri_points: "23,999",
+  // Sample posts data
+  const [posts, setPosts] = useState<Post[]>([
+    {
+      id: "1",
+      content:
+        "Just deployed my first smart contract on StarkNet! The zero-knowledge proofs are incredible. #StarkNet #Web3",
+      image:
+        "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=500",
+      likes: 24,
+      comments: 8,
+      shares: 3,
+      timestamp: "2h ago",
+      rewardAmount: 150,
+      rewardClaimed: false,
+    },
+    {
+      id: "2",
+      content:
+        "Building the future of decentralized social media with Zuri. Every interaction matters! 🚀",
+      likes: 42,
+      comments: 12,
+      shares: 7,
+      timestamp: "1d ago",
+      rewardAmount: 200,
+      rewardClaimed: true,
+    },
+    {
+      id: "3",
+      content:
+        "Love how the community is growing! Thanks everyone for the amazing support.",
+      likes: 18,
+      comments: 5,
+      shares: 2,
+      timestamp: "3d ago",
+      rewardAmount: 100,
+      rewardClaimed: false,
+    },
+  ]);
+
+  // Sample videos data
+  const [videos, setVideos] = useState<VideoPost[]>([
+    {
+      id: "1",
+      title: "Introduction to StarkNet Development",
+      thumbnail:
+        "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500",
+      duration: "12:45",
+      views: 1240,
+      likes: 89,
+      uploadDate: "2 days ago",
+      rewardAmount: 500,
+      rewardClaimed: false,
+    },
+    {
+      id: "2",
+      title: "Building Your First DApp Tutorial",
+      thumbnail:
+        "https://images.unsplash.com/photo-1551650975-87deedd944c3?w=500",
+      duration: "18:30",
+      views: 2100,
+      likes: 156,
+      uploadDate: "1 week ago",
+      rewardAmount: 750,
+      rewardClaimed: true,
+    },
+    {
+      id: "3",
+      title: "Zuri Platform Demo & Features",
+      thumbnail:
+        "https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=500",
+      duration: "8:22",
+      views: 890,
+      likes: 67,
+      uploadDate: "2 weeks ago",
+      rewardAmount: 300,
+      rewardClaimed: false,
+    },
+  ]);
+
+  const generateThumbnails = async (videoList: ItemReel[]) => {
+    const thumbnailPromises = videoList.map(async (video) => {
+      try {
+        const { uri } = await VideoThumbnails.getThumbnailAsync(video.video, {
+          time: 1000,
+          quality: 0.7,
+        });
+        return { id: video.reel_id, uri };
+      } catch (error) {
+        console.warn(
+          "Error generating thumbnail for video:",
+          video.reel_id,
+          error
+        );
+        return { id: video.reel_id, uri: null };
+      }
+    });
+
+    const results = await Promise.all(thumbnailPromises);
+    const thumbnailMap = results.reduce((acc, { id, uri }) => {
+      if (uri) acc[id] = uri;
+      return acc;
+    }, {} as { [key: number]: string });
+
+    setThumbnails(thumbnailMap);
   };
 
   const formatDate = (date) => {
@@ -79,11 +224,407 @@ const UserProfile = () => {
     });
   };
 
+  const fetchAccountPosts = async () => {
+    setActiveTab("posts");
+    if (!contract || !address) return;
+    try {
+      const userAddress = address;
+      const myCall = await contract.populate("filter_post", [userAddress]);
+
+      const res = await contract["filter_post"](myCall.calldata, {
+        parseResponse: false,
+        parseRequest: false,
+      });
+
+      const val = contract.callData.parse("filter_post", res?.result ?? res);
+      console.log(val);
+      setAccountPosts(val);
+    } catch (err) {
+      console.error("Error fetching user:", err);
+    }
+  };
+
+  const fetchAccountReels = async () => {
+    setActiveTab("videos");
+    if (!contract || !address) return;
+    try {
+      const userAddress = address;
+      console.log(userAddress);
+      console.log(
+        bigintToLongAddress(
+          "3391788539791032941773455875793408118539667857541541869595421923442553932255"
+        )
+      );
+
+      const myCall = await contract.populate("view_reels", []);
+
+      const res = await contract["view_reels"](myCall.calldata, {
+        parseResponse: false,
+        parseRequest: false,
+      });
+
+      const val = contract.callData.parse("view_reels", res?.result ?? res);
+      // console.log(val);
+      const _accountReels = [];
+      val.map((item) => {
+        if (bigintToLongAddress(item?.caller) === userAddress) {
+          _accountReels.push(item);
+        }
+      });
+      // console.log(accountReels);
+      setAccountReels(_accountReels);
+    } catch (err) {
+      console.error("Error fetching user:", err);
+    }
+  };
+
+  const estimateClaimFees = (type: "post" | "video", id: string) => {};
+
+  const claimReward = (type: "post" | "video", id: string) => {
+    // claim functionality to be added here
+
+    if (Platform.OS === "android") {
+      ToastAndroid.show("Reward claimed successfully!", ToastAndroid.SHORT);
+    } else {
+      Alert.alert("Success", "Reward claimed successfully!");
+    }
+  };
+
+  useEffect(() => {
+    if (accountReels.length > 0) {
+      generateThumbnails(accountReels);
+    }
+  }, [accountReels]);
+
   const StatCard = ({ icon: Icon, label, value, color = "#ffffff" }) => (
     <View style={styles.statCard}>
       <Icon size={20} color={color} style={styles.statIcon} />
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+
+  const PostCard = ({ post }: { post: Post }) => (
+    <View style={styles.postCard}>
+      {/* <Text style={styles.postContent}>{post.content}</Text> */}
+      <Markdown
+        style={{
+          body: { color: "white" },
+          heading1: { color: "white" },
+          bullet_list_icon: { color: "white" },
+          link: { color: "#1f87fc" },
+        }}
+      >
+        {htmlToMarkdown(post?.content)}
+      </Markdown>
+      {post.image && (
+        <Image source={{ uri: post.image }} style={styles.postImage} />
+      )}
+      <View style={styles.postStats}>
+        <View style={styles.postStatsLeft}>
+          <View style={styles.statItem}>
+            <Heart size={16} color="#ff6b6b" />
+            <Text style={styles.statText}>{post.likes}</Text>
+          </View>
+          <View style={styles.statItem}>
+            <MessageCircle size={16} color="#1f87fc" />
+            <Text style={styles.statText}>{post.comments}</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Share size={16} color="#00ff88" />
+            <Text style={styles.statText}>{post.shares}</Text>
+          </View>
+        </View>
+        <Text style={styles.timestamp}>{post.timestamp}</Text>
+      </View>
+      <View style={styles.rewardSection}>
+        <View style={styles.rewardInfo}>
+          <Zap size={16} color="#ffd700" />
+          <Text style={styles.rewardText}>{post.rewardAmount} Zuri Points</Text>
+        </View>
+        {!post.rewardClaimed ? (
+          <TouchableOpacity
+            style={styles.claimButton}
+            onPress={() => claimReward("post", post.id)}
+          >
+            <Gift size={16} color="#ffffff" />
+            <Text style={styles.claimButtonText}>Claim</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.claimedBadge}>
+            <Text style={styles.claimedText}>Claimed</Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+
+  // const VideoCard = ({ video }: { video: ItemReel }) => (
+  //   <View style={styles.videoCard}>
+  //     <View style={styles.videoThumbnailContainer}>
+  //       <Image
+  //         source={{ uri: video.thumbnail }}
+  //         style={styles.videoThumbnail}
+  //       />
+  //       <View style={styles.playButton}>
+  //         <Play size={20} color="#ffffff" fill="#ffffff" />
+  //       </View>
+  //       <View style={styles.videoDuration}>
+  //         <Text style={styles.durationText}>{video.duration}</Text>
+  //       </View>
+  //     </View>
+  //     <View style={styles.videoInfo}>
+  //       <Text style={styles.videoTitle}>{video.title}</Text>
+  //       <View style={styles.videoStats}>
+  //         <View style={styles.videoStatsLeft}>
+  //           <View style={styles.statItem}>
+  //             <Eye size={14} color="#666666" />
+  //             <Text style={styles.videoStatText}>{video.views} views</Text>
+  //           </View>
+  //           <View style={styles.statItem}>
+  //             <Heart size={14} color="#ff6b6b" />
+  //             <Text style={styles.videoStatText}>{video.likes}</Text>
+  //           </View>
+  //         </View>
+  //         <Text style={styles.videoDate}>{video.uploadDate}</Text>
+  //       </View>
+  //       <View style={styles.rewardSection}>
+  //         <View style={styles.rewardInfo}>
+  //           <Zap size={16} color="#ffd700" />
+  //           <Text style={styles.rewardText}>
+  //             {video.rewardAmount} Zuri Points
+  //           </Text>
+  //         </View>
+  //         {!video.rewardClaimed ? (
+  //           <TouchableOpacity
+  //             style={styles.claimButton}
+  //             onPress={() => claimReward("video", video.id)}
+  //           >
+  //             <Gift size={16} color="#ffffff" />
+  //             <Text style={styles.claimButtonText}>Claim</Text>
+  //           </TouchableOpacity>
+  //         ) : (
+  //           <View style={styles.claimedBadge}>
+  //             <Text style={styles.claimedText}>Claimed</Text>
+  //           </View>
+  //         )}
+  //       </View>
+  //     </View>
+  //   </View>
+  // );
+
+  const VideoCard = ({
+    video,
+    thumbnailUri,
+  }: {
+    video: ItemReel;
+    thumbnailUri?: string;
+  }) => {
+    // Helper function to format timestamp to readable date
+    const formatDate = (ts: number | bigint | string): string => {
+      // Normalize to a safe integer number of seconds
+      let seconds: number;
+      if (typeof ts === "bigint") {
+        seconds = Number(ts);
+      } else if (typeof ts === "string") {
+        // ensure it’s all digits
+        if (!/^\d+$/.test(ts))
+          throw new Error(`Invalid timestamp string: ${ts}`);
+        seconds = Number(ts);
+      } else {
+        seconds = ts;
+      }
+
+      // Now create the Date (milliseconds)
+      const date = new Date(seconds * 1000);
+      // Format however you like:
+      return date.toLocaleDateString(); // e.g. "7/31/2025"
+      // return date.toLocaleString();             // with time
+      // return date.toISOString().slice(0, 10);   // YYYY‑MM‑DD
+    };
+    // Helper function to format view count (you might want to get actual view count from elsewhere)
+    const formatViews = (likes: number) => {
+      // Since there's no views field, using likes as a proxy or you can remove this
+      return likes > 1000 ? `${(likes / 1000).toFixed(1)}k` : likes.toString();
+    };
+
+    return (
+      <View style={styles.videoCard}>
+        <View style={styles.videoThumbnailContainer}>
+          {thumbnailUri ? (
+            <Image
+              source={{ uri: thumbnailUri }}
+              style={styles.videoThumbnail}
+            />
+          ) : (
+            <View
+              style={[
+                styles.videoThumbnail,
+                {
+                  backgroundColor: "#000",
+                  justifyContent: "center",
+                  alignItems: "center",
+                },
+              ]}
+            >
+              <Play size={40} color="#ffffff" fill="#ffffff" />
+            </View>
+          )}
+          <View style={styles.playButton}>
+            <Play size={20} color="#ffffff" fill="#ffffff" />
+          </View>
+        </View>
+        <View style={styles.videoInfo}>
+          <Text style={styles.videoTitle}>{video.description}</Text>
+          <View style={styles.videoStats}>
+            <View style={styles.videoStatsLeft}>
+              <View style={styles.statItem}>
+                <Eye size={14} color="#666666" />
+                <Text style={styles.videoStatText}>
+                  {formatViews(video.likes)} views
+                </Text>
+              </View>
+              <View style={styles.statItem}>
+                <Heart size={14} color="#ff6b6b" />
+                <Text style={styles.videoStatText}>{video.likes}</Text>
+              </View>
+            </View>
+            <Text style={styles.videoDate}>{formatDate(video.timestamp)}</Text>
+          </View>
+          <View style={styles.rewardSection}>
+            <View style={styles.rewardInfo}>
+              <Zap size={16} color="#ffd700" />
+              <Text style={styles.rewardText}>
+                {video.zuri_points} Zuri Points
+              </Text>
+            </View>
+            {/* You'll need to add a claimed status to your ItemReel type or manage it separately */}
+            <TouchableOpacity
+              style={styles.claimButton}
+              onPress={() => claimReward("video", video.reel_id.toString())}
+            >
+              <Gift size={16} color="#ffffff" />
+              <Text style={styles.claimButtonText}>Claim</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  const TabButton = ({ title, icon: Icon, isActive, onPress }) => (
+    <TouchableOpacity
+      style={[styles.tabButton, isActive && styles.activeTabButton]}
+      onPress={onPress}
+    >
+      <Icon size={20} color={isActive ? "#1f87fc" : "#666666"} />
+      <Text
+        style={[styles.tabButtonText, isActive && styles.activeTabButtonText]}
+      >
+        {title}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  const renderProfileContent = () => (
+    <>
+      {/* Stats Section */}
+      <View style={styles.statsContainer}>
+        <StatCard
+          icon={Users}
+          label="Followers"
+          value={user?.no_of_followers.toString()}
+          color="#1f87fc"
+        />
+        <StatCard
+          icon={UserPlus}
+          label="Following"
+          value={user?.number_following.toString()}
+          color="#1f87fc"
+        />
+        <StatCard
+          icon={Zap}
+          label="Zuri Points"
+          value={user?.zuri_points.toString()}
+          color="#ffd700"
+        />
+      </View>
+
+      {/* Zuri Points Section */}
+      <View style={styles.pointsSection}>
+        <View style={styles.pointsHeader}>
+          <Zap size={24} color="#ffd700" />
+          <Text style={styles.pointsTitle}>Zuri Points</Text>
+        </View>
+        <Text style={styles.pointsSubtitle}>
+          Earn points by creating engaging content and interacting with the
+          community
+        </Text>
+        <View style={styles.pointsProgress}>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: "25%" }]} />
+          </View>
+          <Text style={styles.progressText}>Next reward at 100 points</Text>
+        </View>
+      </View>
+
+      {/* StarkNet Integration Info */}
+      <View style={styles.blockchainSection}>
+        <Text style={styles.blockchainTitle}>Built on StarkNet</Text>
+        <Text style={styles.blockchainSubtitle}>
+          Your rewards and interactions are secured by StarkNet's zero-knowledge
+          technology
+        </Text>
+        <View style={styles.userIdContainer}>
+          <Text style={styles.userIdLabel}>User ID:</Text>
+          <Pressable
+            onPress={() => {
+              Clipboard.setStringAsync(address);
+              if (Platform.OS === "android") {
+                ToastAndroid.show("Address copied!", ToastAndroid.SHORT);
+              } else {
+                Alert.alert("Copied", "Address has been copied to clipboard.");
+              }
+            }}
+          >
+            <Text
+              style={[styles.userId, { textDecorationLine: "underline" }]}
+              numberOfLines={1}
+              ellipsizeMode="middle"
+            >
+              {address}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </>
+  );
+
+  const renderPostsContent = () => (
+    <View style={styles.contentContainer}>
+      <Text style={styles.sectionTitle}>My Posts</Text>
+      <FlatList
+        data={accountPosts}
+        renderItem={({ item }) => <PostCard post={item} />}
+        keyExtractor={(item) => item.postId}
+        showsVerticalScrollIndicator={false}
+        scrollEnabled={false}
+      />
+    </View>
+  );
+
+  const renderVideosContent = () => (
+    <View style={styles.contentContainer}>
+      <Text style={styles.sectionTitle}>My Videos</Text>
+      <FlatList
+        data={accountReels}
+        renderItem={({ item }) => (
+          <VideoCard video={item} thumbnailUri={thumbnails[item.reel_id]} />
+        )}
+        keyExtractor={(item) => item?.reel_id}
+        showsVerticalScrollIndicator={false}
+        scrollEnabled={false}
+      />
     </View>
   );
 
@@ -170,128 +711,46 @@ const UserProfile = () => {
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
-            {/* <TouchableOpacity
-              style={[
-                styles.followButton,
-                isFollowing && styles.followingButton,
-              ]}
-              onPress={() => setIsFollowing(!isFollowing)}
-            >
-              <UserPlus size={18} color={isFollowing ? "#1f87fc" : "#ffffff"} />
-              <Text
-                style={[
-                  styles.followButtonText,
-                  isFollowing && styles.followingButtonText,
-                ]}
-              >
-                {isFollowing ? "Following" : "Follow"}
-              </Text>
-            </TouchableOpacity> */}
-
             <TouchableOpacity
               style={styles.followButton}
-              onPress={() => setIsFollowing(!isFollowing)}
+              onPress={() => setModalVisible(true)}
             >
               <UserPlus size={18} color={"#ffffff"} />
-              <Text
-                style={[styles.followButtonText]}
-                onPress={() => setModalVisible(true)}
-              >
-                Update Account
-              </Text>
+              <Text style={styles.followButtonText}>Update Account</Text>
             </TouchableOpacity>
 
             <Modal visible={modalVisible} animationType="slide">
               <ProfileUpdateComponent onClose={() => setModalVisible(false)} />
             </Modal>
-
-            {/* <TouchableOpacity style={styles.messageButton}>
-              <Text style={styles.messageButtonText}>Sell Zuri Points</Text>
-            </TouchableOpacity> */}
           </View>
         </View>
 
-        {/* Stats Section */}
-        <View style={styles.statsContainer}>
-          <StatCard
-            icon={Users}
-            label="Followers"
-            value={user?.no_of_followers.toString()}
-            color="#1f87fc"
+        {/* Tab Navigation */}
+        <View style={styles.tabContainer}>
+          <TabButton
+            title="Profile"
+            icon={Settings}
+            isActive={activeTab === "profile"}
+            onPress={() => setActiveTab("profile")}
           />
-          <StatCard
-            icon={UserPlus}
-            label="Following"
-            value={user?.number_following.toString()}
-            color="#1f87fc"
+          <TabButton
+            title="Posts"
+            icon={FileText}
+            isActive={activeTab === "posts"}
+            onPress={fetchAccountPosts}
           />
-          <StatCard
-            icon={Zap}
-            label="Zuri Points"
-            value={user?.zuri_points.toString()}
-            color="#ffd700"
+          <TabButton
+            title="Videos"
+            icon={Video}
+            isActive={activeTab === "videos"}
+            onPress={fetchAccountReels}
           />
-          {/* <StatCard icon={Award} label="Rewards" value="12" color="#ff6b6b" /> */}
         </View>
 
-        {/* Zuri Points Section */}
-        <View style={styles.pointsSection}>
-          <View style={styles.pointsHeader}>
-            <Zap size={24} color="#ffd700" />
-            <Text style={styles.pointsTitle}>Zuri Points</Text>
-          </View>
-          <Text style={styles.pointsSubtitle}>
-            Earn points by creating engaging content and interacting with the
-            community
-          </Text>
-          <View style={styles.pointsProgress}>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: "25%" }]} />
-            </View>
-            <Text style={styles.progressText}>Next reward at 100 points</Text>
-          </View>
-        </View>
-
-        {/* StarkNet Integration Info */}
-        <View style={styles.blockchainSection}>
-          <Text style={styles.blockchainTitle}>Built on StarkNet</Text>
-          <Text style={styles.blockchainSubtitle}>
-            Your rewards and interactions are secured by StarkNet's
-            zero-knowledge technology
-          </Text>
-          <View style={styles.userIdContainer}>
-            <Text style={styles.userIdLabel}>User ID:</Text>
-            {/* <Text
-              style={styles.userId}
-              numberOfLines={1}
-              ellipsizeMode="middle"
-            >
-              {address}
-            </Text> */}
-
-            <Pressable
-              onPress={() => {
-                Clipboard.setStringAsync(address);
-                if (Platform.OS === "android") {
-                  ToastAndroid.show("Address copied!", ToastAndroid.SHORT);
-                } else {
-                  Alert.alert(
-                    "Copied",
-                    "Address has been copied to clipboard."
-                  );
-                }
-              }}
-            >
-              <Text
-                style={[styles.userId, { textDecorationLine: "underline" }]}
-                numberOfLines={1}
-                ellipsizeMode="middle"
-              >
-                {address}
-              </Text>
-            </Pressable>
-          </View>
-        </View>
+        {/* Tab Content */}
+        {activeTab === "profile" && renderProfileContent()}
+        {activeTab === "posts" && renderPostsContent()}
+        {activeTab === "videos" && renderVideosContent()}
       </ScrollView>
     </>
   );
@@ -458,6 +917,45 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 14,
   },
+  tabContainer: {
+    flexDirection: "row",
+    backgroundColor: "#1a1a1a",
+    marginHorizontal: 20,
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 20,
+  },
+  tabButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  activeTabButton: {
+    backgroundColor: "#0a0a0a",
+  },
+  tabButtonText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#666666",
+  },
+  activeTabButtonText: {
+    color: "#1f87fc",
+  },
+  contentContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#ffffff",
+    marginBottom: 16,
+  },
   statsContainer: {
     flexDirection: "row",
     paddingHorizontal: 20,
@@ -565,6 +1063,160 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#1f87fc",
     fontFamily: "monospace",
+  },
+  postCard: {
+    backgroundColor: "#1a1a1a",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#333333",
+  },
+  postContent: {
+    fontSize: 16,
+    color: "#ffffff",
+    lineHeight: 22,
+    marginBottom: 12,
+  },
+  postImage: {
+    width: "100%",
+    height: 200,
+    borderRadius: 12,
+    marginBottom: 12,
+    backgroundColor: "#333333",
+  },
+  postStats: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  postStatsLeft: {
+    flexDirection: "row",
+    gap: 16,
+  },
+  statItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  statText: {
+    fontSize: 14,
+    color: "#cccccc",
+  },
+  timestamp: {
+    fontSize: 12,
+    color: "#666666",
+  },
+  rewardSection: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#0a0a0a",
+    borderRadius: 8,
+    padding: 12,
+  },
+  rewardInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  rewardText: {
+    fontSize: 14,
+    color: "#ffd700",
+    fontWeight: "bold",
+  },
+  claimButton: {
+    backgroundColor: "#1f87fc",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  claimButtonText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  claimedBadge: {
+    backgroundColor: "#00ff88",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  claimedText: {
+    color: "#0a0a0a",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  videoCard: {
+    backgroundColor: "#1a1a1a",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#333333",
+  },
+  videoThumbnailContainer: {
+    position: "relative",
+    marginBottom: 12,
+  },
+  videoThumbnail: {
+    width: "100%",
+    height: 200,
+    borderRadius: 12,
+    backgroundColor: "#333333",
+  },
+  playButton: {
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    transform: [{ translateX: -20 }, { translateY: -20 }],
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    borderRadius: 20,
+    padding: 12,
+  },
+  videoDuration: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  durationText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  videoInfo: {
+    gap: 8,
+  },
+  videoTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#ffffff",
+    lineHeight: 22,
+  },
+  videoStats: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  videoStatsLeft: {
+    flexDirection: "row",
+    gap: 16,
+  },
+  videoStatText: {
+    fontSize: 12,
+    color: "#cccccc",
+  },
+  videoDate: {
+    fontSize: 12,
+    color: "#666666",
   },
 });
 
