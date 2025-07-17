@@ -53,6 +53,7 @@ import {
 } from "@/utils/AppUtils";
 import CommentComponent from "@/components/CommentComponent";
 import MiniFunctions from "@/utils/MiniFunctions";
+import { LIKE_FEE, REEL_LIKE_FEE, STRK_ADDRESS } from "@/utils/constants";
 
 const ActionButton = ({
   icon,
@@ -153,14 +154,13 @@ const ReelItem = ({ item, isVisible, shouldLoad }) => {
         throw new Error("Contract or account not ready");
       }
 
-      const ETH_ADDRESS =
-        "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
-      const FEE = BigInt("31000000000000");
+
+      const FEE = REEL_LIKE_FEE;
       const myCall = contract.populate("like_reel", [item.reel_id]);
 
       const calls = [
         {
-          contractAddress: ETH_ADDRESS,
+          contractAddress: STRK_ADDRESS,
           entrypoint: "approve",
           calldata: CallData.compile({
             spender: CONTRACT_ADDRESS,
@@ -214,14 +214,13 @@ const ReelItem = ({ item, isVisible, shouldLoad }) => {
         throw new Error("Contract or account not ready");
       }
 
-      const ETH_ADDRESS =
-        "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
-      const FEE = BigInt("31000000000000");
+ 
+      const FEE = REEL_LIKE_FEE;
       const myCall = contract.populate("like_reel", [item.reel_id]);
 
       const calls = [
         {
-          contractAddress: ETH_ADDRESS,
+          contractAddress: STRK_ADDRESS,
           entrypoint: "approve",
           calldata: CallData.compile({
             spender: CONTRACT_ADDRESS,
@@ -539,7 +538,7 @@ export default function App() {
         parseRequest: false,
       });
 
-      const val = contract.callData.parse("view_reels", res?.result ?? res);
+      const val = res;
 
       if (Array.isArray(val)) {
         const shuffledArray = val

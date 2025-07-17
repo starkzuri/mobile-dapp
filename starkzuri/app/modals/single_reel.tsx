@@ -29,6 +29,7 @@ import {
   bigintToShortStr,
   weiToEth,
 } from "@/utils/AppUtils";
+import { REEL_COMMENT_FEE, STRK_ADDRESS } from "@/utils/constants";
 
 const { width } = Dimensions.get("window");
 
@@ -501,10 +502,7 @@ const ReelCommentsPage = () => {
       parseRequest: false,
     })
       .then((res) => {
-        let val = contract.callData.parse(
-          "view_reel_comments",
-          res?.result ?? res
-        );
+        let val = res;
         // console.log(val);
         setReelComments(val.reverse());
         // console.log(val);
@@ -580,16 +578,14 @@ const ReelCommentsPage = () => {
     setIsModalVisible(true);
     if (!newComment.trim()) return;
     if (!isReady || !account || !contract) return;
-    const ETH_ADDRESS =
-      "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
-    const FEE = BigInt("5900000000000");
+    const FEE = REEL_COMMENT_FEE;
     const myCall = contract.populate("comment_on_reel", [
       single_reel_id,
       newComment,
     ]);
     const calls = [
       {
-        contractAddress: ETH_ADDRESS,
+        contractAddress: STRK_ADDRESS,
         entrypoint: "approve",
         calldata: CallData.compile({
           spender: CONTRACT_ADDRESS,
@@ -631,9 +627,8 @@ const ReelCommentsPage = () => {
       position: "top",
       autoHide: false,
     });
-    const ETH_ADDRESS =
-      "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
-    const FEE = BigInt("5900000000000");
+
+    const FEE = REEL_COMMENT_FEE;
     const myCall = contract.populate("comment_on_reel", [
       single_reel_id,
       newComment,
@@ -641,7 +636,7 @@ const ReelCommentsPage = () => {
     console.log(myCall.calldata);
     const calls = [
       {
-        contractAddress: ETH_ADDRESS,
+        contractAddress: STRK_ADDRESS,
         entrypoint: "approve",
         calldata: CallData.compile({
           spender: CONTRACT_ADDRESS,

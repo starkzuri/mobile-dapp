@@ -137,7 +137,7 @@
 // }
 
 import { BigNumber } from "bignumber.js";
-import { shortString, uint256, Provider, Contract } from "starknet";
+import { shortString, uint256, Provider, Contract, BigNumberish, Uint256 } from "starknet";
 import { NODE_URL } from "./constants";
 import { emojiMap, asciiToEmojiMap } from "./EmojiAscii";
 
@@ -181,6 +181,25 @@ export function bigintToLongAddress(
   }
 }
 
+export const bigintToU256 = (v: BigNumberish): Uint256 => ({
+  low: BigInt(v) & 0xffffffffffffffffffffffffffffffffn,
+  high: BigInt(v) >> 128n,
+})
+
+
+export const fetchSTRKToUsd = async () => {
+  try {
+    const response = await fetch(
+      "https://api.coingecko.com/api/v3/simple/price?ids=starknet&vs_currencies=usd"
+    );
+    const data = await response.json();
+    const strkPriceInUsd = data?.starknet?.usd;
+    return strkPriceInUsd || 0.0; // Number, e.g., 3425.12
+  } catch (error) {
+    console.error("Failed to fetch ETH price:", error);
+    return null;
+  }
+};
 /**
  * Converts BigNumber to Uint256 calldata
  */

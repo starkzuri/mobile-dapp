@@ -113,7 +113,7 @@ const MiniFunctions = (accountAddress: bigint | string): User => {
         parseRequest: false,
       });
 
-      const val = contract.callData.parse("view_user", res?.result ?? res);
+      const val = res;
       setUser(val);
     } catch (err) {
       console.error("Error: ", err);

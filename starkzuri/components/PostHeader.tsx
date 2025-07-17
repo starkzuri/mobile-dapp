@@ -10,7 +10,8 @@ import MiniFunctions from "@/utils/MiniFunctions";
 import { bigintToShortStr } from "@/utils/AppUtils";
 
 const PostHeader = ({ post }) => {
-  const user = MiniFunctions(post?.caller.toString());
+  const user = MiniFunctions(post?.author?.userId.toString() || post?.caller?.toString());
+  //console.log("dsfdsf",user)
   return (
     <View style={styles.postHeader}>
       <View style={styles.userInfo}>
