@@ -64,13 +64,10 @@ const StarkZuriNotifications = () => {
       parseRequest: false,
     })
       .then((res) => {
-        let val = contract.callData.parse(
-          "view_notifications",
-          res?.result ?? res
-        );
+        let val = res;
 
         // setUsers(val);
-        console.log("Notifications", val);
+       // console.log("Notifications", val);
         setNotifications(val.reverse());
         // console.log(val)
         // setNotifications(val.reverse());

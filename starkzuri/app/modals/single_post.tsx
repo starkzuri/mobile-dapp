@@ -25,6 +25,7 @@ import { htmlToMarkdown } from "@/utils/AppUtils";
 import { weiToEth } from "@/utils/AppUtils";
 import ConfirmPostModal from "@/components/PostConfirmationModal";
 import { CONTRACT_ADDRESS } from "@/providers/abi";
+import { LIKE_FEE, STRK_ADDRESS } from "@/utils/constants";
 
 const { width } = Dimensions.get("window");
 
@@ -153,8 +154,8 @@ const SinglePostPage = () => {
       parseRequest: false,
     })
       .then((res) => {
-        let val = contract.callData.parse("view_post", res?.result ?? res);
-        // console.log(val);
+        let val = res;
+         console.log("fvgf",val);
         setPosts(val);
         // console.log(val);
       })
@@ -176,7 +177,7 @@ const SinglePostPage = () => {
       parseRequest: false,
     })
       .then((res) => {
-        let val = contract.callData.parse("view_comments", res?.result ?? res);
+        let val = res;
         // console.log(val);
         setCommentList(val.reverse());
         // console.log(val);
@@ -245,15 +246,14 @@ const SinglePostPage = () => {
     try {
       const myCall = contract.populate("like_post", [single_post]);
 
-      const ETH_ADDRESS =
-        "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
+     
       const POST_CONTRACT =
         "0x7c2109cfa8c36fa10c6baac19b234679606cba00eb6697a052b73b869850673";
-      const FEE = BigInt("31000000000000");
+      const FEE = LIKE_FEE;
 
       const calls = [
         {
-          contractAddress: ETH_ADDRESS,
+          contractAddress: STRK_ADDRESS,
           entrypoint: "approve",
           calldata: CallData.compile({
             spender: POST_CONTRACT,
@@ -268,7 +268,7 @@ const SinglePostPage = () => {
       ];
       const { suggestedMaxFee, unit } = await account.estimateInvokeFee(calls);
 
-      const likeFee = BigInt("31000000000000");
+      const likeFee = LIKE_FEE;
       const feeToEth = weiToEth(suggestedMaxFee, 8);
       const likeFeeToEth = weiToEth(likeFee);
       setEstimateFee(feeToEth);
@@ -300,17 +300,16 @@ const SinglePostPage = () => {
       autoHide: false,
     });
 
-    const ETH_ADDRESS =
-      "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
+    
     const POST_CONTRACT =
       "0x7c2109cfa8c36fa10c6baac19b234679606cba00eb6697a052b73b869850673";
-    const FEE = BigInt("31000000000000");
+    const FEE = LIKE_FEE;
 
     const myCall = contract.populate("like_post", [single_post]);
 
     const calls = [
       {
-        contractAddress: ETH_ADDRESS,
+        contractAddress: STRK_ADDRESS,
         entrypoint: "approve",
         calldata: CallData.compile({
           spender: POST_CONTRACT,
@@ -391,7 +390,7 @@ const SinglePostPage = () => {
       const myCall = contract.populate("claim_post_points", [single_post]);
 
       const res = await account.execute(myCall);
-      console.log("points claimed", res.transaction_hash);
+     // console.log("points claimed", res.transaction_hash);
 
       Toast.hide();
       Toast.show({

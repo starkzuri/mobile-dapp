@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import Modal from "react-native-modal";
-import { toDecimalString, fetchEthToUsd } from "@/utils/AppUtils";
+import { toDecimalString, fetchEthToUsd, fetchSTRKToUsd } from "@/utils/AppUtils";
 
 const ConfirmPostModal = ({
   visible,
@@ -22,12 +22,13 @@ const ConfirmPostModal = ({
 
   const total = Number(gasFee) + Number(platformFee);
 
+  
   const getUsdValue = async () => {
     setLoading(true);
     try {
-      const ethPrice = await fetchEthToUsd();
-      const totalInEth = ethPrice * total;
-      setTotalInUsd(totalInEth.toFixed(6));
+      const strkPrice = await fetchSTRKToUsd();
+      const totalInStrk = strkPrice * total;
+      setTotalInUsd(totalInStrk.toFixed(6));
     } catch (e) {
       console.log("error in fetching ", e);
       setTotalInUsd("0");
@@ -55,9 +56,9 @@ const ConfirmPostModal = ({
         ) : (
           <>
             <Text style={styles.subtext}>Review Fees before Transaction:</Text>
-            <Text style={styles.feeText}>⛽ Gas Fee: ~{gasFee} ETH</Text>
+            <Text style={styles.feeText}>⛽ Gas Fee: ~{gasFee} STRK</Text>
             <Text style={styles.feeText}>
-              🎯 Platform Fee: ~{platformFee} ETH
+              🎯 Platform Fee: ~{platformFee} STRK
             </Text>
             <Text
               style={[
@@ -65,7 +66,7 @@ const ConfirmPostModal = ({
                 { fontWeight: "bold", marginTop: 25, textAlign: "left" },
               ]}
             >
-              🧾 Total: {toDecimalString(total)} ETH
+              🧾 Total: {parseFloat(toDecimalString(total)).toFixed(6).toString()} STRK
             </Text>
             <Text
               style={[

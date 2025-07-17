@@ -5,8 +5,11 @@ import { router } from "expo-router";
 import PostHeader from "./PostHeader";
 import PostContent from "./PostContent";
 import PostFooter from "./PostFooter";
+import MiniFunctions from "@/utils/MiniFunctions";
 
-const PostItem = ({ post, handleLike, handleClaimPoints }) => (
+const PostItem = ({ post, handleLike, handleClaimPoints }) =>{
+  
+  return (
   <Pressable
     onPress={() =>
       router.push({
@@ -31,7 +34,7 @@ const PostItem = ({ post, handleLike, handleClaimPoints }) => (
       handleClaimPoints={handleClaimPoints}
     />
   </Pressable>
-);
+);} 
 
 export default memo(PostItem, (prevProps, nextProps) => {
   return (

@@ -33,15 +33,15 @@ const usePostActions = () => {
   const initializePosts = useCallback(async (contract: any) => {
     setContract(contract);
     await initializePagination();
-  }, []); 
+  }, []); // Remove all Zustand functions from dependencies
 
   const loadMore = useCallback(async () => {
     await loadMorePosts();
-  }, []);
+  }, []); // Remove loadMorePosts from dependencies
 
   const refresh = useCallback(async () => {
     await refreshPosts();
-  }, []); 
+  }, []); // Remove refreshPosts from dependencies
 
   const likePost = useCallback(async (postId: number, onLike: (id: number) => Promise<void>) => {
     // Optimistic update
@@ -49,14 +49,14 @@ const usePostActions = () => {
     
     try {
       await onLike(postId);
-    
+      // Remove optimistic flag on success
       updatePost(postId, { isOptimistic: false });
     } catch (error) {
-
+      // Revert optimistic update on failure
       revertOptimisticLike(postId);
       throw error;
     }
-  }, []);
+  }, []); // Remove all Zustand functions from dependencies
 
   const claimPoints = useCallback(async (postId: number, onClaim: (id: number) => Promise<void>) => {
     // Get current post data

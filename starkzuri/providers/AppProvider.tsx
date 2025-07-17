@@ -198,10 +198,7 @@ const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
         parseRequest: false,
       });
 
-      const parsed = contract.callData.parse(
-        "view_user",
-        result?.result ?? result
-      );
+      const parsed = result;
       console.log(parsed);
       return parsed;
     } catch (error) {

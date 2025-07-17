@@ -37,6 +37,7 @@ const { width } = Dimensions.get("window");
 import MiniFunctions from "@/utils/MiniFunctions";
 import { weiToEth } from "@/utils/AppUtils";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { STRK_ADDRESS } from "@/utils/constants";
 
 const CommentComponent = ({ postId, initialComments = [] }) => {
   const { contract, account, address, isReady } = useAppContext();
@@ -64,7 +65,7 @@ const CommentComponent = ({ postId, initialComments = [] }) => {
       parseRequest: false,
     })
       .then((res) => {
-        let val = contract.callData.parse("view_comments", res?.result ?? res);
+        let val = res
         console.log(val);
         setCommentList(val.reverse());
         console.log(val);
@@ -81,16 +82,14 @@ const CommentComponent = ({ postId, initialComments = [] }) => {
     if (!newComment.trim()) return;
     if (!isReady || !account || !contract) return;
     const formattedContent = multilineToSingleline(newComment.trim());
-    const ETH_ADDRESS =
-      "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
-    const FEE = BigInt("5900000000000");
+    const FEE = BigInt("142400000000000000");
     const myCall = contract.populate("comment_on_post", [
       postId,
       formattedContent,
     ]);
     const calls = [
       {
-        contractAddress: ETH_ADDRESS,
+        contractAddress: STRK_ADDRESS,
         entrypoint: "approve",
         calldata: CallData.compile({
           spender: CONTRACT_ADDRESS,
@@ -138,9 +137,7 @@ const CommentComponent = ({ postId, initialComments = [] }) => {
       position: "top",
       autoHide: false,
     });
-    const ETH_ADDRESS =
-      "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
-    const FEE = BigInt("5900000000000");
+    const FEE = BigInt("142400000000000000");
     const myCall = contract.populate("comment_on_post", [
       postId,
       formattedContent,
@@ -148,7 +145,7 @@ const CommentComponent = ({ postId, initialComments = [] }) => {
     console.log(myCall.calldata);
     const calls = [
       {
-        contractAddress: ETH_ADDRESS,
+        contractAddress: STRK_ADDRESS,
         entrypoint: "approve",
         calldata: CallData.compile({
           spender: CONTRACT_ADDRESS,

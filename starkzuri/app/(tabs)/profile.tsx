@@ -236,7 +236,7 @@ const UserProfile = () => {
         parseRequest: false,
       });
 
-      const val = contract.callData.parse("filter_post", res?.result ?? res);
+      const val = res;
       console.log(val);
       setAccountPosts(val);
     } catch (err) {
@@ -263,7 +263,7 @@ const UserProfile = () => {
         parseRequest: false,
       });
 
-      const val = contract.callData.parse("view_reels", res?.result ?? res);
+      const val = res;
       // console.log(val);
       const _accountReels = [];
       val.map((item) => {

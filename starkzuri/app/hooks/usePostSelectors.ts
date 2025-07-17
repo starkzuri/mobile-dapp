@@ -1,7 +1,21 @@
 import { useMemo } from 'react';
 import usePostStore from '@/stores/usePaginationStore';
 
+// Safe BigInt conversion function
+const safeBigInt = (value: any): bigint => {
+  if (value === null || value === undefined || value === "" || value === "0x") {
+    return BigInt(0);
+  }
+  
+  try {
+    return BigInt(value);
+  } catch (error) {
+    console.warn('Failed to convert to BigInt:', value, 'defaulting to 0');
+    return BigInt(0);
+  }
+};
 
+// Define the exact shape based on your actual store interface
 type SelectorResult = {
   posts: any[];
   isLoading: boolean;
@@ -15,7 +29,7 @@ type SelectorResult = {
 };
 
 const usePostSelectors = () => {
-
+  // Individual selectors to prevent re-renders
   const posts = usePostStore(state => state.posts || []);
   const isLoading = usePostStore(state => state.isLoadingPosts || false);
   const isRefreshing = usePostStore(state => state.isRefreshing || false);
@@ -26,19 +40,49 @@ const usePostSelectors = () => {
   const totalPages = usePostStore(state => state.totalPages || null);
   const hasNextPage = usePostStore(state => state.hasNextPage || false);
 
- 
+  // Memoize computed values with safe BigInt conversion AND flattening
   const sortedPosts = useMemo(() => {
     if (!posts || !Array.isArray(posts) || posts.length === 0) {
       return [];
     }
     
-    return [...posts].sort((a, b) => {
+    // console.log('Raw posts before processing:', posts);
+    // console.log('Posts structure check:', posts.map(p => ({ isArray: Array.isArray(p), type: typeof p })));
+    
+    // FLATTEN THE POSTS ARRAY - this is the key fix!
+    let flattenedPosts = [];
+    try {
+      flattenedPosts = posts.flat();
+     // console.log('Flattened posts:', flattenedPosts);
+    } catch (error) {
+      //console.error('Error flattening posts:', error);
+      // Fallback: manual flattening
+      flattenedPosts = [];
+      for (const item of posts) {
+        if (Array.isArray(item)) {
+          flattenedPosts.push(...item);
+        } else {
+          flattenedPosts.push(item);
+        }
+      }
+    }
+    
+    // Filter out any invalid posts
+    const validPosts = flattenedPosts.filter(post => 
+      post && 
+      typeof post === 'object' && 
+      post.postId !== undefined
+    );
+    
+    // console.log('Valid posts after filtering:', validPosts.length);
+    
+    return validPosts.sort((a, b) => {
       try {
-        const dateA = BigInt(a.date_posted || 0);
-        const dateB = BigInt(b.date_posted || 0);
+        const dateA = safeBigInt(a.date_posted);
+        const dateB = safeBigInt(b.date_posted);
         return dateB > dateA ? 1 : -1;
       } catch (error) {
-        console.warn('Error sorting posts by date:', error);
+        console.error('Error sorting posts by date:', error, { a: a.date_posted, b: b.date_posted });
         return 0;
       }
     });
@@ -49,7 +93,7 @@ const usePostSelectors = () => {
   }, [hasNextPage, isLoading, isRefreshing]);
 
   return {
-    posts: sortedPosts, // Return sorted posts
+    posts: sortedPosts, // Return flattened and sorted posts
     isLoading,
     isRefreshing,
     isInitializing,

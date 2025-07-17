@@ -3,7 +3,15 @@ import { subscribeWithSelector } from "zustand/middleware";
 import { shallow } from "zustand/shallow";
 import BigNumber from "bignumber.js";
 
-// Types
+// Updated Types to include new ABI structures
+interface LightUser {
+  userId: string;
+  name: string;
+  username: string;
+  profile_pic: string;
+  zuri_points: string;
+}
+
 interface Post {
   postId: number;
   caller: number;
@@ -16,7 +24,9 @@ interface Post {
   date_posted: any;
   isLiked?: boolean;
   isClaimable?: boolean;
-  isOptimistic?: boolean; 
+  isOptimistic?: boolean; // for optimistic updates
+  // New fields from PostView structure
+  author?: LightUser; // Optional for backward compatibility
 }
 
 interface PaginationContract {
@@ -48,7 +58,7 @@ interface PostStore {
   // Contract
   contract: PaginationContract | null;
   
-  // New flag to track if initial load is done
+  // Flag to track if initial load is done
   hasInitialLoad: boolean;
   
   // Actions - Initialization
@@ -78,7 +88,7 @@ interface PostStore {
   // Selectors
   getPostById: (postId: number) => Post | undefined;
   getSortedPosts: () => Post[];
-  getPostsByUser: (userId: number) => Post[];
+  getPostsByUser: (userId: number | string) => Post[]; // Updated to handle both old and new formats
   canLoadMore: () => boolean;
 }
 
@@ -96,7 +106,7 @@ const usePostStore = create<PostStore>()(
     hasError: false,
     errorMessage: null,
     contract: null,
-    hasInitialLoad: false, 
+    hasInitialLoad: false,
 
     // Actions - Initialization
     setContract: (contract) => set({ contract }),
@@ -104,7 +114,7 @@ const usePostStore = create<PostStore>()(
     initializePagination: async () => {
       const { contract, hasInitialLoad } = get();
       
-     
+      // Prevent re-initialization if already done
       if (hasInitialLoad) {
         return;
       }
@@ -148,7 +158,7 @@ const usePostStore = create<PostStore>()(
           hasInitialLoad: true // Mark as initialized
         });
 
-     
+        // Load posts in a separate call to avoid state update conflicts
         setTimeout(async () => {
           await get().loadPosts(calculatedTotalPages);
         }, 0);
@@ -180,51 +190,89 @@ const usePostStore = create<PostStore>()(
 
       try {
         const myCall = contract.populate("view_posts", [targetPage]);
+        
         const response = await contract.view_posts(myCall.calldata, {
           parseResponse: false,
           parseRequest: false,
         });
 
-        const newPosts = contract.callData.parse(
-          "view_posts",
-          response?.result ?? response
-        );
+      
+        
+        // Parse the response using contract's callData parser
+        let formatResponse = response;
+        
+        
 
-        // Sort posts by date (newest first)
-        const sortedPosts = newPosts.sort((a, b) => {
-          const dateA = BigInt(a.date_posted);
-          const dateB = BigInt(b.date_posted);
-          return dateB > dateA ? 1 : -1;
-        });
+        if (formatResponse && Array.isArray(formatResponse)) {
+         // console.log("Parsed posts:", formatResponse);
 
-        set((state) => {
-          const updatedPostsById = new Map(state.postsById);
-          const newPostsList = [...state.posts];
-
-          // Add new posts and update map
-          sortedPosts.forEach(post => {
-            if (!updatedPostsById.has(post.postId)) {
-              updatedPostsById.set(post.postId, post);
-              newPostsList.push(post);
-            }
+          const newPosts = formatResponse.map((post: any) => {
+            // Handle both old Post and new PostView structures
+            const processedPost: Post = {
+              postId: Number(post.postId || post.post_id),
+              caller: Number(post.caller || post.author?.userId || 0),
+              content: post.content || "",
+              likes: Number(post.likes || 0),
+              comments: Number(post.comments || 0),
+              shares: Number(post.shares || 0),
+              images: post.images || "",
+              zuri_points: (post.zuri_points || "0").toString(),
+              date_posted: post.date_posted || post.datePosted || 0,
+              isLiked: false,
+              isClaimable: false,
+              isOptimistic: false,
+              // Add author info if available (new PostView structure)
+              author: post.author ? {
+                userId: post.author.userId || "",
+                name: post.author.name || "",
+                username: post.author.username || "",
+                profile_pic: post.author.profile_pic || "",
+                zuri_points: (post.author.zuri_points || "0").toString()
+              } : undefined
+            };
+            
+            return processedPost;
           });
 
-          // Sort the complete list
-          newPostsList.sort((a, b) => {
-            const dateA = BigInt(a.date_posted);
-            const dateB = BigInt(b.date_posted);
+          // Sort posts by date (newest first)
+          const sortedPosts = [...newPosts].sort((a, b) => {
+            const dateA = safeBigInt(a.date_posted);
+            const dateB = safeBigInt(b.date_posted);
             return dateB > dateA ? 1 : -1;
           });
+          
+          set((state) => {
+            const updatedPostsById = new Map(state.postsById);
+            const newPostsList = [...state.posts];
 
-          return {
-            posts: newPostsList,
-            postsById: updatedPostsById,
-            currentPage: targetPage,
-            hasNextPage: targetPage > 1,
-            isLoadingPosts: false
-          };
-        });
+            // Add new posts and update map
+            sortedPosts.forEach((post: Post) => {
+              if (!updatedPostsById.has(post.postId)) {
+                updatedPostsById.set(post.postId, post);
+                newPostsList.push(post);
+              }
+            });
 
+            // Sort the complete list
+            newPostsList.sort((a, b) => {
+              const dateA = safeBigInt(a.date_posted);
+              const dateB = safeBigInt(b.date_posted);
+              return dateB > dateA ? 1 : -1;
+            });
+
+            return {
+              posts: newPostsList,
+              postsById: updatedPostsById,
+              currentPage: targetPage,
+              hasNextPage: targetPage > 1,
+              isLoadingPosts: false
+            };
+          });
+        } else {
+          console.log('Response is not an array:', response);
+          set({ isLoadingPosts: false });
+        }
+        
       } catch (error) {
         console.error("Error loading posts:", error);
         set({
@@ -250,23 +298,18 @@ const usePostStore = create<PostStore>()(
     },
 
     refreshPosts: async () => {
-      const { contract, totalPages } = get();
+      const { contract } = get();
       if (!contract) return;
 
       set({ isRefreshing: true, hasError: false, errorMessage: null });
 
       try {
         // Reset the initial load flag to allow re-initialization
-        set({ hasInitialLoad: false });
+        set({ hasInitialLoad: false, posts: [], postsById: new Map() });
         
         // Re-initialize to get latest total pages
         await get().initializePagination();
         
-        // Load latest posts
-        const latestPage = get().totalPages;
-        if (latestPage) {
-          await get().loadPosts(latestPage);
-        }
       } catch (error) {
         console.error("Error refreshing posts:", error);
         set({
@@ -332,15 +375,15 @@ const usePostStore = create<PostStore>()(
 
     // Actions - Optimistic Updates
     optimisticLike: (postId) => {
-        const post = get().postsById.get(postId);
-        const likes = typeof post?.likes === 'number' ? post.likes : 0;
+      const post = get().postsById.get(postId);
+      const likes = typeof post?.likes === 'number' ? post.likes : 0;
 
-        get().updatePost(postId, {
-          likes: likes + 1,
-          isLiked: true,
-          isOptimistic: true
-        });
-      },
+      get().updatePost(postId, {
+        likes: likes + 1,
+        isLiked: true,
+        isOptimistic: true
+      });
+    },
 
     optimisticUnlike: (postId) => {
       const post = get().postsById.get(postId);
@@ -387,14 +430,20 @@ const usePostStore = create<PostStore>()(
     
     getSortedPosts: () => {
       return [...get().posts].sort((a, b) => {
-        const dateA = BigInt(a.date_posted);
-        const dateB = BigInt(b.date_posted);
+        const dateA = safeBigInt(a.date_posted);
+        const dateB = safeBigInt(b.date_posted);
         return dateB > dateA ? 1 : -1;
       });
     },
     
     getPostsByUser: (userId) => {
-      return get().posts.filter(post => post.caller === userId);
+      return get().posts.filter(post => {
+        // Handle both old format (caller) and new format (author.userId)
+        if (typeof userId === 'string') {
+          return post.author?.userId === userId || post.caller.toString() === userId;
+        }
+        return post.caller === userId || post.author?.userId === userId.toString();
+      });
     },
     
     canLoadMore: () => {
@@ -405,3 +454,34 @@ const usePostStore = create<PostStore>()(
 );
 
 export default usePostStore;
+
+const safeBigInt = (value: string | number | bigint | boolean | null | undefined) => {
+  if (value === null || value === undefined || value === "") {
+    return BigInt(0);
+  }
+  
+  try {
+    return BigInt(value);
+  } catch (error) {
+    console.warn('Failed to convert to BigInt:', value, error);
+    return BigInt(0);
+  }
+};
+
+// Helper function to parse PostView response format
+const parsePostViewResponse = (rawResponse: any[]): Post[] => {
+  try {
+    // This is a basic parser - you may need to adjust based on actual response structure
+    console.log("Attempting to parse PostView response:", rawResponse);
+    
+    // For now, return empty array and log the response for manual inspection
+    // You'll need to implement proper parsing based on the actual structure
+    return [];
+  } catch (error) {
+    console.error("Error parsing PostView response:", error);
+    return [];
+  }
+};
+
+// Export types for external use
+export type { Post, LightUser, PaginationContract, PostStore };

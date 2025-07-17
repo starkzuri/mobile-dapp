@@ -69,7 +69,7 @@ const StarkZuriMoreTab = () => {
         parseRequest: false,
       });
 
-      const val = contract.callData.parse("view_user", res?.result ?? res);
+      const val = res;
 
       setUser(val);
     } catch (err) {
