@@ -32,21 +32,26 @@ export default function Signup() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://192.168.100.4:4000/create_account", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          password,
-        }), // 1 ETH in wei
-      });
+      const response = await fetch(
+        "https://relayer-xsew.onrender.com/create_account",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            password,
+          }), // 1 ETH in wei
+        }
+      );
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Funding failed");
       const userData = data.userData;
 
       await AsyncStorage.setItem("user", JSON.stringify(userData));
+      console.log(JSON.stringify(userData));
       Alert.alert("account creation successful");
+      router.push("/login");
     } catch (e) {
       console.error(e);
     } finally {

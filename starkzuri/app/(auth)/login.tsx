@@ -42,7 +42,7 @@ export default function Login() {
     setIsLoading(true);
 
     const user = JSON.parse(encryptedKey);
-    // console.log(user);
+    console.log(user);
 
     const response = await fetch("https://relayer-xsew.onrender.com/login", {
       method: "POST",

@@ -414,17 +414,17 @@ const StarkZuriMoreTab = () => {
 
             <View style={styles.earningsContainer}>
               <View style={styles.earningsItem}>
-                <Text style={styles.earningsLabel}>Eth Balance</Text>
+                <Text style={styles.earningsLabel}>STRK Balance</Text>
                 <Text style={styles.earningsAmount}>
-                  {ethbalance.toString()} ETH
+                  {ethbalance.toString()} STRK
                 </Text>
               </View>
-              <View style={styles.earningsItem}>
+              {/* <View style={styles.earningsItem}>
                 <Text style={styles.earningsLabel}>This Week</Text>
                 <Text style={styles.earningsAmount}>
                   {user?.zuri_points?.toLocaleString()} $ZURI
                 </Text>
-              </View>
+              </View> */}
             </View>
 
             <TouchableOpacity
@@ -536,7 +536,7 @@ const StarkZuriMoreTab = () => {
                       activeTab === "transfer" && styles.activeTabText,
                     ]}
                   >
-                    Transfer ETH
+                    Transfer STRK
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -559,6 +559,17 @@ const StarkZuriMoreTab = () => {
                       keyboardType="numeric"
                     />
                   </View>
+
+                  <Text style={styles.balanceInfo}>
+                    You’ll receive{" "}
+                    <Text style={styles.amount}>
+                      {(Number(withdrawAmount) * 0.06408).toLocaleString()}
+                    </Text>{" "}
+                    STRK{" "}
+                    <Text style={styles.deduction}>
+                      (after 10% fee on Zuri points)
+                    </Text>
+                  </Text>
 
                   {/* <View style={styles.quickAmountContainer}>
                     <Text style={styles.quickAmountLabel}>Quick amounts:</Text>
@@ -600,16 +611,18 @@ const StarkZuriMoreTab = () => {
               ) : (
                 <View style={styles.tabContent}>
                   <Text style={styles.balanceInfo}>
-                    Available: {ethbalance} ETH
+                    Available: {ethbalance} STRK
                   </Text>
 
                   <View style={styles.inputContainer}>
-                    <Text style={styles.inputLabel}>Transfer Amount (ETH)</Text>
+                    <Text style={styles.inputLabel}>
+                      Transfer Amount (STRK)
+                    </Text>
                     <TextInput
                       style={styles.input}
                       value={transferAmount}
                       onChangeText={setTransferAmount}
-                      placeholder="Enter ETH amount"
+                      placeholder="Enter STRK amount"
                       placeholderTextColor="#666"
                       keyboardType="numeric"
                     />
@@ -673,6 +686,16 @@ const styles = StyleSheet.create({
   walletContainer: {
     paddingHorizontal: 24,
     marginBottom: 32,
+  },
+  amount: {
+    fontWeight: "bold",
+    color: "#2ecc71", // green for positive vibes
+  },
+
+  deduction: {
+    fontSize: 14,
+    color: "#e74c3c", // red for emphasis
+    fontStyle: "italic",
   },
   walletCard: {
     backgroundColor: "#1a1a1a",

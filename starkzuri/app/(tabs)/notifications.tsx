@@ -67,8 +67,8 @@ const StarkZuriNotifications = () => {
         let val = res;
 
         // setUsers(val);
-       // console.log("Notifications", val);
-        setNotifications(val.reverse());
+        // console.log("Notifications", val);
+        setNotifications(res.reverse());
         // console.log(val)
         // setNotifications(val.reverse());
       })
