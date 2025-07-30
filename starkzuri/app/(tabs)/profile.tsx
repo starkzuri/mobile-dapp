@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -40,13 +40,18 @@ import {
   bigintToLongAddress,
   bigintToShortStr,
   htmlToMarkdown,
+  weiToEth,
 } from "@/utils/AppUtils";
+import { CONTRACT_ADDRESS } from "@/providers/abi";
 
 import MiniFunctions from "@/utils/MiniFunctions";
 import ProfileUpdateComponent from "@/components/UpdateUser";
+import Toast from "react-native-toast-message";
+import ConfirmPostModal from "@/components/PostConfirmationModal";
 import * as Clipboard from "expo-clipboard";
 // import { Video } from "expo-av";
 import { handleUrlParams } from "expo-router/build/fork/getStateFromPath-forks";
+import usePostActions from "../hooks/usePostActions";
 
 const { width } = Dimensions.get("window");
 
@@ -67,12 +72,12 @@ type User = {
 type Post = {
   id: string;
   content: string;
-  image?: string;
+  images?: string;
   likes: number;
   comments: number;
   shares: number;
   timestamp: string;
-  rewardAmount: number;
+  zuri_points: number;
   rewardClaimed: boolean;
 };
 
@@ -108,87 +113,18 @@ const UserProfile = () => {
   const [activeTab, setActiveTab] = useState("profile");
   const [accountPosts, setAccountPosts] = useState([]);
   const [accountReels, setAccountReels] = useState([]);
+  const [estimateFee, setEstimateFee] = useState("0");
+  const [platformFee, setPlatformFee] = useState("0");
+  const [claimModalOpen, setClaimModalOpen] = useState(false);
+  const [claimReelModalOpen, setClaimReelModalOpen] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState("0");
+  const [selectedReelId, setSelectedReelId] = useState("0");
   const [isFollowing, setIsFollowing] = useState(false);
   const [thumbnails, setThumbnails] = useState<{ [key: number]: string }>({});
-
+  const { claimPoints } = usePostActions();
   // Sample posts data
-  const [posts, setPosts] = useState<Post[]>([
-    {
-      id: "1",
-      content:
-        "Just deployed my first smart contract on StarkNet! The zero-knowledge proofs are incredible. #StarkNet #Web3",
-      image:
-        "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=500",
-      likes: 24,
-      comments: 8,
-      shares: 3,
-      timestamp: "2h ago",
-      rewardAmount: 150,
-      rewardClaimed: false,
-    },
-    {
-      id: "2",
-      content:
-        "Building the future of decentralized social media with Zuri. Every interaction matters! 🚀",
-      likes: 42,
-      comments: 12,
-      shares: 7,
-      timestamp: "1d ago",
-      rewardAmount: 200,
-      rewardClaimed: true,
-    },
-    {
-      id: "3",
-      content:
-        "Love how the community is growing! Thanks everyone for the amazing support.",
-      likes: 18,
-      comments: 5,
-      shares: 2,
-      timestamp: "3d ago",
-      rewardAmount: 100,
-      rewardClaimed: false,
-    },
-  ]);
 
   // Sample videos data
-  const [videos, setVideos] = useState<VideoPost[]>([
-    {
-      id: "1",
-      title: "Introduction to StarkNet Development",
-      thumbnail:
-        "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500",
-      duration: "12:45",
-      views: 1240,
-      likes: 89,
-      uploadDate: "2 days ago",
-      rewardAmount: 500,
-      rewardClaimed: false,
-    },
-    {
-      id: "2",
-      title: "Building Your First DApp Tutorial",
-      thumbnail:
-        "https://images.unsplash.com/photo-1551650975-87deedd944c3?w=500",
-      duration: "18:30",
-      views: 2100,
-      likes: 156,
-      uploadDate: "1 week ago",
-      rewardAmount: 750,
-      rewardClaimed: true,
-    },
-    {
-      id: "3",
-      title: "Zuri Platform Demo & Features",
-      thumbnail:
-        "https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=500",
-      duration: "8:22",
-      views: 890,
-      likes: 67,
-      uploadDate: "2 weeks ago",
-      rewardAmount: 300,
-      rewardClaimed: false,
-    },
-  ]);
 
   const generateThumbnails = async (videoList: ItemReel[]) => {
     const thumbnailPromises = videoList.map(async (video) => {
@@ -236,7 +172,7 @@ const UserProfile = () => {
         parseRequest: false,
       });
 
-      const val = res;
+      const val = res.reverse();
       console.log(val);
       setAccountPosts(val);
     } catch (err) {
@@ -278,7 +214,140 @@ const UserProfile = () => {
     }
   };
 
-  const estimateClaimFees = (type: "post" | "video", id: string) => {};
+  // const estimateClaimFees = (type: "post" | "video", id: string) => {};
+
+  const estimateReelClaim = useCallback(
+    async (reelId: string) => {
+      if (!account || !isReady || !contract) return;
+      console.log(reelId);
+      try {
+        const myCall = contract.populate("claim_reel_points", [reelId]);
+        const { suggestedMaxFee } = await account.estimateInvokeFee({
+          contractAddress: CONTRACT_ADDRESS,
+          entrypoint: "claim_reel_points",
+          calldata: myCall.calldata,
+        });
+
+        setEstimateFee(weiToEth(suggestedMaxFee, 8));
+        setPlatformFee("0.00");
+        setSelectedReelId(reelId);
+        setClaimReelModalOpen(true);
+      } catch (err) {
+        console.error("Claim fee estimation failed:", err);
+        Toast.show({
+          type: "error",
+          text1: "Fee Estimation Failed",
+          text2: "Please try again",
+        });
+      }
+    },
+    [account, isReady, contract]
+  );
+
+  const estimateClaimFees = useCallback(
+    async (postId: string) => {
+      if (!account || !isReady || !contract) return;
+      console.log(postId);
+
+      try {
+        const myCall = contract.populate("claim_post_points", [postId]);
+        const { suggestedMaxFee } = await account.estimateInvokeFee({
+          contractAddress: CONTRACT_ADDRESS,
+          entrypoint: "claim_post_points",
+          calldata: myCall.calldata,
+        });
+
+        setEstimateFee(weiToEth(suggestedMaxFee, 8));
+        setPlatformFee("0.00");
+        setSelectedPostId(postId);
+        setClaimModalOpen(true);
+      } catch (err) {
+        console.error("Claim fee estimation failed:", err);
+        Toast.show({
+          type: "error",
+          text1: "Fee Estimation Failed",
+          text2: "Please try again",
+        });
+      }
+    },
+    [account, isReady, contract]
+  );
+
+  const handleClaimPoints = useCallback(async () => {
+    if (!isReady || !account || !contract) return;
+
+    setClaimModalOpen(false);
+
+    try {
+      await claimPoints(Number(selectedPostId), async (postId: number) => {
+        Toast.show({
+          type: "info",
+          text1: "Processing Transaction...",
+          position: "top",
+          autoHide: false,
+        });
+
+        console.log(selectedPostId);
+
+        const myCall = contract.populate("claim_post_points", [postId]);
+        const res = await account.execute(myCall);
+        console.log("Points claimed", res.transaction_hash);
+      });
+
+      Toast.hide();
+      Toast.show({
+        type: "success",
+        text1: "Zuri Claimed",
+        text2: "You can now withdraw your points to wallet 🎉",
+      });
+    } catch (error) {
+      console.error("Claim transaction failed:", error);
+      Toast.hide();
+      Toast.show({
+        type: "error",
+        text1: "Claim Failed",
+        text2: "Please try again later 😢",
+      });
+    }
+  }, [isReady, account, contract, selectedPostId, claimPoints]);
+
+  const handleClaimReelPoints = useCallback(async () => {
+    if (!isReady || !account || !contract) return;
+
+    setClaimModalOpen(false);
+
+    try {
+      await claimPoints(Number(selectedReelId), async (postId: number) => {
+        Toast.show({
+          type: "info",
+          text1: "Processing Transaction...",
+          position: "top",
+          autoHide: false,
+        });
+
+        console.log(selectedPostId);
+
+        const myCall = contract.populate("claim_reel_points", [postId]);
+        const res = await account.execute(myCall);
+        console.log("Points claimed", res.transaction_hash);
+      });
+
+      Toast.hide();
+      Toast.show({
+        type: "success",
+        text1: "Zuri Claimed",
+        text2: "You can now withdraw your points to wallet 🎉",
+      });
+    } catch (error) {
+      console.error("Claim transaction failed:", error);
+      Toast.hide();
+      Toast.show({
+        type: "error",
+        text1: "Claim Failed",
+        text2: "Please try again later 😢",
+      });
+    }
+  }, [isReady, account, contract, selectedReelId, claimPoints]);
 
   const claimReward = (type: "post" | "video", id: string) => {
     // claim functionality to be added here
@@ -317,8 +386,12 @@ const UserProfile = () => {
       >
         {htmlToMarkdown(post?.content)}
       </Markdown>
-      {post.image && (
-        <Image source={{ uri: post.image }} style={styles.postImage} />
+
+      {post.images && (
+        <Image
+          source={{ uri: post.images.split(" ")[0] }}
+          style={styles.postImage}
+        />
       )}
       <View style={styles.postStats}>
         <View style={styles.postStatsLeft}>
@@ -337,15 +410,27 @@ const UserProfile = () => {
         </View>
         <Text style={styles.timestamp}>{post.timestamp}</Text>
       </View>
+
+      <ConfirmPostModal
+        gasFee={estimateFee}
+        platformFee={platformFee}
+        message=""
+        onCancel={() => setClaimModalOpen(false)}
+        onConfirm={handleClaimPoints}
+        visible={claimModalOpen}
+      />
+
       <View style={styles.rewardSection}>
         <View style={styles.rewardInfo}>
           <Zap size={16} color="#ffd700" />
-          <Text style={styles.rewardText}>{post.rewardAmount} Zuri Points</Text>
+          <Text style={styles.rewardText}>
+            {post.zuri_points.toString()} Zuri Points
+          </Text>
         </View>
-        {!post.rewardClaimed ? (
+        {post.zuri_points ? (
           <TouchableOpacity
             style={styles.claimButton}
-            onPress={() => claimReward("post", post.id)}
+            onPress={() => estimateClaimFees(post?.postId?.toString())}
           >
             <Gift size={16} color="#ffffff" />
             <Text style={styles.claimButtonText}>Claim</Text>
@@ -499,13 +584,26 @@ const UserProfile = () => {
               </Text>
             </View>
             {/* You'll need to add a claimed status to your ItemReel type or manage it separately */}
-            <TouchableOpacity
+            {video.zuri_points ? (
+              <TouchableOpacity
+                style={styles.claimButton}
+                onPress={() => estimateReelClaim(video.reel_id.toString())}
+              >
+                <Gift size={16} color="#ffffff" />
+                <Text style={styles.claimButtonText}>Claim</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.claimedBadge}>
+                <Text style={styles.claimedText}>Claimed</Text>
+              </View>
+            )}
+            {/* <TouchableOpacity
               style={styles.claimButton}
-              onPress={() => claimReward("video", video.reel_id.toString())}
+              onPress={() => estimateReelClaim(video.reel_id.toString())}
             >
               <Gift size={16} color="#ffffff" />
               <Text style={styles.claimButtonText}>Claim</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
         </View>
       </View>
@@ -562,7 +660,12 @@ const UserProfile = () => {
         </Text>
         <View style={styles.pointsProgress}>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: "25%" }]} />
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${user.zuri_points.toString()}%` },
+              ]}
+            />
           </View>
           <Text style={styles.progressText}>Next reward at 100 points</Text>
         </View>
@@ -746,6 +849,15 @@ const UserProfile = () => {
             onPress={fetchAccountReels}
           />
         </View>
+
+        <ConfirmPostModal
+          gasFee={estimateFee}
+          platformFee={platformFee}
+          message=""
+          onCancel={() => setClaimReelModalOpen(false)}
+          onConfirm={handleClaimReelPoints}
+          visible={claimReelModalOpen}
+        />
 
         {/* Tab Content */}
         {activeTab === "profile" && renderProfileContent()}
