@@ -10,6 +10,8 @@ import {
   TextInput,
   Alert,
   Dimensions,
+  KeyboardAvoidingView,
+  Platform
 } from "react-native";
 import { CallData, uint256 } from "starknet";
 import Toast from "react-native-toast-message";
@@ -448,6 +450,7 @@ const CommentComponent = ({ postId, initialComments = [] }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+  
       {/* Comment Input */}
       <View style={styles.inputContainer}>
         <Image
@@ -520,6 +523,7 @@ const CommentComponent = ({ postId, initialComments = [] }) => {
         nestedScrollEnabled={true}
         scrollEnabled={false} // Disable FlatList scrolling if parent handles it
       />
+ 
     </SafeAreaView>
   );
 };

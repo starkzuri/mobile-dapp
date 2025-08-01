@@ -78,7 +78,7 @@ export default function RecoverAccount() {
       Alert.alert("Success", "Account recovery successful!");
 
       // TODO: Navigate to homepage
-      router.push("/login");
+      router.replace("/login");
     } catch (err: any) {
       console.error("Recovery error:", err);
       Alert.alert("Error", err.message || "Something went wrong");

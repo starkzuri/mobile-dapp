@@ -13,6 +13,9 @@ import {
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAppContext } from "@/providers/AppProvider";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { mainStyles } from "@/styles";
+
 
 export default function Login() {
   const router = useRouter();
@@ -42,7 +45,7 @@ export default function Login() {
     setIsLoading(true);
 
     const user = JSON.parse(encryptedKey);
-    console.log(user);
+   // console.log(user);
 
     const response = await fetch("https://relayer-xsew.onrender.com/login", {
       method: "POST",
@@ -69,7 +72,9 @@ export default function Login() {
       );
       setIsLoading(false);
       await reInit();
-      router.push("/");
+        setTimeout(() => {
+          router.replace("/");
+        }, 100);
     }
     if (!response.ok) throw new Error(data.error || "something happened");
   }
@@ -103,76 +108,80 @@ export default function Login() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0d1117" />
 
-      <View style={styles.logoSection}>
-        <Image
-          source={require("../../assets/images/ST4.png")}
-          style={{ width: 100, height: 100 }}
-        />
+      <SafeAreaView style={mainStyles.container}>
 
-        <Text style={styles.appName}>starkzuri</Text>
-        <Text style={styles.tagline}>Join the Creator Economy</Text>
-      </View>
+        <StatusBar barStyle="light-content" backgroundColor="#0d1117" />
 
-      <View style={styles.formContainer}>
-        <Text style={styles.title}>Welcome Back</Text>
-        <Text style={styles.subtitle}>Sign in to continue</Text>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            value={email}
-            onChangeText={setEmail}
-            style={styles.input}
-            placeholderTextColor="#6b7280"
-            placeholder="Enter your email"
-            keyboardType="email-address"
-            autoCapitalize="none"
+        <View style={styles.logoSection}>
+          <Image
+            source={require("../../assets/images/ST4.png")}
+            style={{ width: 100, height: 100 }}
           />
-          {emailError ? (
-            <Text style={styles.errorText}>{emailError}</Text>
-          ) : null}
+
+          <Text style={styles.appName}>starkzuri</Text>
+          <Text style={styles.tagline}>Join the Creator Economy</Text>
         </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            style={styles.input}
-            placeholderTextColor="#6b7280"
-            placeholder="Enter your password"
-          />
-          {passwordError ? (
-            <Text style={styles.errorText}>{passwordError}</Text>
-          ) : null}
-        </View>
+        <View style={styles.formContainer}>
+          <Text style={styles.title}>Welcome Back</Text>
+          <Text style={styles.subtitle}>Sign in to continue</Text>
 
-        {
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            {/* <Text style={styles.loginButtonText}>Login</Text> */}
-            {isLoading ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.loginButtonText}>Login</Text>
-            )}
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              value={email}
+              onChangeText={setEmail}
+              style={styles.input}
+              placeholderTextColor="#6b7280"
+              placeholder="Enter your email"
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            {emailError ? (
+              <Text style={styles.errorText}>{emailError}</Text>
+            ) : null}
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              style={styles.input}
+              placeholderTextColor="#6b7280"
+              placeholder="Enter your password"
+            />
+            {passwordError ? (
+              <Text style={styles.errorText}>{passwordError}</Text>
+            ) : null}
+          </View>
+
+          {
+            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+              {/* <Text style={styles.loginButtonText}>Login</Text> */}
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.loginButtonText}>Login</Text>
+              )}
+            </TouchableOpacity>
+          }
+
+          <TouchableOpacity
+            style={styles.signupLink}
+            onPress={() => router.push("/signup")}
+          >
+            <Text style={styles.signupText}>
+              Don't have an account?{" "}
+              <Text style={styles.signupTextHighlight}>Sign up</Text>
+            </Text>
           </TouchableOpacity>
-        }
+        </View>
 
-        <TouchableOpacity
-          style={styles.signupLink}
-          onPress={() => router.push("/signup")}
-        >
-          <Text style={styles.signupText}>
-            Don't have an account?{" "}
-            <Text style={styles.signupTextHighlight}>Sign up</Text>
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+      </SafeAreaView>
+
   );
 }
 
