@@ -5,29 +5,23 @@ import { AppProvider } from "@/providers/AppProvider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { View, ActivityIndicator } from "react-native";
 import Toast from "react-native-toast-message";
-import { SafeAreaProvider,useSafeAreaInsets } from 'react-native-safe-area-context';
+import { NotificationProvider } from "@/context/NotificationContext";
+import * as Notifications from "expo-notifications";
 
-function useIsSafeAreaReady() {
-  const insets = useSafeAreaInsets();
-  const [isReady, setIsReady] = useState(false);
-   
-  
-  useEffect(() => {
-    if (insets.top > 0 || insets.bottom >= 0) {
-      setIsReady(true);
-    } else {
-      const timer = setTimeout(() => setIsReady(true), 100);
-      return () => clearTimeout(timer);
-    }
-  }, [insets]);
-  
-  return isReady;
-}
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,  // Add this
+    shouldShowList: true,    // Add this
+  }),
+});
+
 
 export default function RootLayout() {
   const router = useRouter();
   const [checkingLogin, setCheckingLogin] = useState(false);
-  const isSafeAreaReady = useIsSafeAreaReady();
 
   useEffect(() => {
     const checkLogin = async () => {
@@ -48,21 +42,20 @@ export default function RootLayout() {
     };
 
     checkLogin();
-  }, [isSafeAreaReady]);
+  }, []);
 
-  if (!isSafeAreaReady || checkingLogin) {
+  if (checkingLogin) {
     return (
-      <SafeAreaProvider>
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" />
       </View>
-      </SafeAreaProvider>
     );
   }
 
   return (
-    <SafeAreaProvider>
+   
     <AppProvider>
+       <NotificationProvider>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
@@ -80,7 +73,7 @@ export default function RootLayout() {
       </Stack>
       <Toast />
       <StatusBar style="dark" />
+      </NotificationProvider>
     </AppProvider>
-    </SafeAreaProvider>
   );
 }

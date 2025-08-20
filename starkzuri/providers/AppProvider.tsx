@@ -229,6 +229,7 @@ const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
     } catch (err) {
       console.error("Starknet init failed:", err);
     } finally {
+      console.log("setting ready to true")
       setIsReady(true);
     }
   };

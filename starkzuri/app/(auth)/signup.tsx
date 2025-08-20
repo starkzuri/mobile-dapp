@@ -51,7 +51,7 @@ export default function Signup() {
       await AsyncStorage.setItem("user", JSON.stringify(userData));
       console.log(JSON.stringify(userData));
       Alert.alert("account creation successful");
-      router.replace("/login");
+      router.push("/login");
     } catch (e) {
       console.error(e);
     } finally {

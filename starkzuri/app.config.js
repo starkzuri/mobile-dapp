@@ -1,3 +1,4 @@
+
 import "dotenv/config";
 export default {
   expo: {
@@ -7,12 +8,14 @@ export default {
     extra: {
       PUBLIC_CHAIN_ID: process.env.PUBLIC_CHAIN_ID,
       ARGENT_WEBWALLET_URL: process.env.ARGENT_WEBWALLET_URL,
+      PUBLIC_SUPABASE_URL: process.env.PUBLIC_SUPABASE_URL,
+      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
       eas: {
-        projectId: "c8a62244-ddce-4c68-9e8b-7295f13c67af",
+        projectId: "413c273d-a0ea-4a19-9809-da0c328fec12",
       },
     },
     ios: {
-      bundleIdentifier: "com.felix.starkzuri",
+      bundleIdentifier: "com.kagwep.starkzuri",
     },
     plugins: ["expo-localization"],
     orientation: "portrait",
@@ -24,12 +27,13 @@ export default {
       supportsTablet: true,
     },
     android: {
-      package: "com.felix.starkzuri",
+      package: "com.kagwep.starkzuri",
       adaptiveIcon: {
         foregroundImage: "./assets/images/ST4.png",
         backgroundColor: "#ffffff",
       },
       edgeToEdgeEnabled: true,
+      googleServicesFile:"./google-services.json"
     },
     web: {
       bundler: "metro",
@@ -39,6 +43,14 @@ export default {
     plugins: [
       "expo-router",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification_icon.png",
+          "color": "#ffffff",
+          "defaultChannel": "default",
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           image: "./assets/images/ST4.png",
@@ -47,10 +59,11 @@ export default {
           backgroundColor: "#0a0a0a",
         },
       ],
+      
     ],
     experiments: {
       typedRoutes: true,
     },
-    owner: "felabs",
+    owner: "kagwep",
   },
 };
