@@ -26,6 +26,9 @@ import { weiToEth } from "@/utils/AppUtils";
 import ConfirmPostModal from "@/components/PostConfirmationModal";
 import { CONTRACT_ADDRESS } from "@/providers/abi";
 import { LIKE_FEE, STRK_ADDRESS } from "@/utils/constants";
+import MiniFunctions from "@/utils/MiniFunctions";
+import usePostStore from "@/stores/usePaginationStore";
+import { sendNotification } from "@/utils/sendLikeNotification";
 
 const { width } = Dimensions.get("window");
 
@@ -127,7 +130,11 @@ const SinglePostPage = () => {
   });
   const [commentList, setCommentList] = useState<Comment[]>([]);
 
+  const user = MiniFunctions(account?.address?.toString());
+
   // using the turndown service
+ const getPostById = usePostStore(state => state.getPostById);
+ 
 
   function displayMarkdown(_html) {
     const turnDownService = new TurndownService();
@@ -326,13 +333,16 @@ const SinglePostPage = () => {
     try {
       const res = await account.execute(calls);
       console.log("Transaction sent!", res.transaction_hash);
-
+     // const post = getPostById(single_post as unknown as number);
+       //console.log("..",user,posts)
+      sendNotification(posts,user)
       Toast.hide();
       Toast.show({
         type: "success",
         text1: "Like successful!",
         text2: "Your like now counts 🎉",
       });
+     
     } catch (err) {
       console.error("TX failed:", err);
       Toast.show({
@@ -515,7 +525,7 @@ const SinglePostPage = () => {
             showsVerticalScrollIndicator={false}
           />
         </View> */}
-        <CommentComponent postId={single_post} />
+        <CommentComponent post={posts} />
       </ScrollView>
 
       {/* Comment Input */}

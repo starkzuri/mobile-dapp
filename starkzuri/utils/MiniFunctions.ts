@@ -68,7 +68,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useFocusEffect } from "expo-router";
 import { bigintToLongAddress } from "./AppUtils";
 
-type User = {
+export type User = {
   userId: number;
   name: number;
   username: number;

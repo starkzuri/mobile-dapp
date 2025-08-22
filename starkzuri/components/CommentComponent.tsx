@@ -38,8 +38,9 @@ import MiniFunctions from "@/utils/MiniFunctions";
 import { weiToEth } from "@/utils/AppUtils";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { STRK_ADDRESS } from "@/utils/constants";
+import { sendCommentNotification } from "@/utils/sendCommentNotification";
 
-const CommentComponent = ({ postId, initialComments = [] }) => {
+const CommentComponent = ({ post, initialComments = [] }) => {
   const { contract, account, address, isReady } = useAppContext();
   const [estimateFee, setEstimateFee] = useState("");
   const [platformFee, setPlatformFee] = useState("");
@@ -47,6 +48,9 @@ const CommentComponent = ({ postId, initialComments = [] }) => {
   // console.log(account);
   // console.log(address);
   const user = MiniFunctions(address);
+
+
+  const postId = post.postId
 
   const [newComment, setNewComment] = useState("");
   const [replyingTo, setReplyingTo] = useState(null);
@@ -167,6 +171,8 @@ const CommentComponent = ({ postId, initialComments = [] }) => {
         text1: "Comment successful!",
         text2: "Your comment is live 🎉",
       });
+     // console.log(post,user,newComment)
+      sendCommentNotification(post,user,newComment) // multiline should be trimmed
       view_comments();
     } catch (error) {
       console.error("comment failed ", error);

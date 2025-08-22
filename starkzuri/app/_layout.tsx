@@ -5,6 +5,19 @@ import { AppProvider } from "@/providers/AppProvider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { View, ActivityIndicator } from "react-native";
 import Toast from "react-native-toast-message";
+import { NotificationProvider } from "@/context/NotificationContext";
+import * as Notifications from "expo-notifications";
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,  // Add this
+    shouldShowList: true,    // Add this
+  }),
+});
+
 
 export default function RootLayout() {
   const router = useRouter();
@@ -40,7 +53,9 @@ export default function RootLayout() {
   }
 
   return (
+   
     <AppProvider>
+       <NotificationProvider>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
@@ -58,6 +73,7 @@ export default function RootLayout() {
       </Stack>
       <Toast />
       <StatusBar style="dark" />
+      </NotificationProvider>
     </AppProvider>
   );
 }
