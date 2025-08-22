@@ -29,6 +29,8 @@ import ConfirmPostModal from "@/components/PostConfirmationModal";
 import usePostActions from "../hooks/usePostActions";
 import usePostSelectors from "../hooks/usePostSelectors";
 import { LIKE_FEE, STRK_ADDRESS } from "@/utils/constants";
+import usePostStore from "@/stores/usePaginationStore";
+import { sendNotification } from "@/utils/sendLikeNotification";
 ;
 
 const StarkZuriHomepage = () => {
@@ -45,6 +47,8 @@ const StarkZuriHomepage = () => {
 const [isInitialized, setIsInitialized] = useState(false);
   // User data
 const user = MiniFunctions(account?.address?.toString() ?? "");
+
+const getPostById = usePostStore(state => state.getPostById);
 
   // Enhanced Post Store
   const {
@@ -211,6 +215,11 @@ useEffect(() => {
 
         const res = await account.execute(calls);
         console.log("Transaction sent!", res.transaction_hash);
+        //bigintToShortStr(user.username)
+        const post = getPostById(postId);
+        // console.log("likrf",user,post)
+        sendNotification(post,user)
+
       });
 
       Toast.hide();

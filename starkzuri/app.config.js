@@ -10,12 +10,14 @@ export default {
       ARGENT_WEBWALLET_URL: process.env.ARGENT_WEBWALLET_URL,
       PUBLIC_SUPABASE_URL: process.env.PUBLIC_SUPABASE_URL,
       SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+      PUBLIC_SUPABASE_URL_NOTIFICATION_URL: process.env.PUBLIC_SUPABASE_URL_NOTIFICATION_URL,
+      PUBLIC_SUPABASE_URL_COMMENT_NOTIFICATION_URL: process.env.PUBLIC_SUPABASE_URL_NOTIFICATION_URL,
       eas: {
-        projectId: "413c273d-a0ea-4a19-9809-da0c328fec12",
+        projectId: "c8a62244-ddce-4c68-9e8b-7295f13c67af",
       },
     },
     ios: {
-      bundleIdentifier: "com.kagwep.starkzuri",
+      bundleIdentifier: "com.felix.starkzuri",
     },
     plugins: ["expo-localization"],
     orientation: "portrait",
@@ -27,7 +29,7 @@ export default {
       supportsTablet: true,
     },
     android: {
-      package: "com.kagwep.starkzuri",
+      package: "com.felix.starkzuri",
       adaptiveIcon: {
         foregroundImage: "./assets/images/ST4.png",
         backgroundColor: "#ffffff",
@@ -64,6 +66,6 @@ export default {
     experiments: {
       typedRoutes: true,
     },
-    owner: "kagwep",
+    owner: "felabs",
   },
 };
