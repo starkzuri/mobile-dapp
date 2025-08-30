@@ -6,7 +6,7 @@ import {
   htmlToMarkdown,
   weiToEth,
 } from "@/utils/AppUtils";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import {
   Calendar,
@@ -106,7 +106,6 @@ type ItemReel = {
 
 const UserProfile = () => {
   const { account, isReady, contract, address } = useAppContext();
-  const user = MiniFunctions(account?.address?.toString());
   const [modalVisible, setModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
   const [accountPosts, setAccountPosts] = useState([]);
@@ -120,6 +119,9 @@ const UserProfile = () => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [thumbnails, setThumbnails] = useState<{ [key: number]: string }>({});
   const { claimPoints } = usePostActions();
+  const { account_address } = useLocalSearchParams();
+  const user = MiniFunctions(account_address);
+
   const router = useRouter();
   // Sample posts data
 
@@ -161,9 +163,9 @@ const UserProfile = () => {
 
   const fetchAccountPosts = async () => {
     setActiveTab("posts");
-    if (!contract || !address) return;
+    if (!contract || !account_address) return;
     try {
-      const userAddress = address;
+      const userAddress = account_address;
       const myCall = await contract.populate("filter_post", [userAddress]);
 
       const res = await contract["filter_post"](myCall.calldata, {
@@ -181,15 +183,15 @@ const UserProfile = () => {
 
   const fetchAccountReels = async () => {
     setActiveTab("videos");
-    if (!contract || !address) return;
+    if (!contract || !account_address) return;
     try {
-      const userAddress = address;
-      console.log(userAddress);
-      console.log(
-        bigintToLongAddress(
-          "3391788539791032941773455875793408118539667857541541869595421923442553932255"
-        )
-      );
+      const userAddress = account_address;
+      // console.log(userAddress);
+      // console.log(
+      //   bigintToLongAddress(
+      //     "3391788539791032941773455875793408118539667857541541869595421923442553932255"
+      //   )
+      // );
 
       const myCall = await contract.populate("view_reels", []);
 
@@ -202,7 +204,7 @@ const UserProfile = () => {
       // console.log(val);
       const _accountReels = [];
       val.map((item) => {
-        if (bigintToLongAddress(item?.caller) === userAddress) {
+        if (bigintToLongAddress(item?.caller) === account_address) {
           _accountReels.push(item);
         }
       });
@@ -426,7 +428,7 @@ const UserProfile = () => {
             {post.zuri_points.toString()} Zuri Points
           </Text>
         </View>
-        {post.zuri_points ? (
+        {/* {post.zuri_points ? (
           <TouchableOpacity
             style={styles.claimButton}
             onPress={() => estimateClaimFees(post?.postId?.toString())}
@@ -438,7 +440,7 @@ const UserProfile = () => {
           <View style={styles.claimedBadge}>
             <Text style={styles.claimedText}>Claimed</Text>
           </View>
-        )}
+        )} */}
       </View>
     </View>
   );
@@ -681,7 +683,7 @@ const UserProfile = () => {
           <Text style={styles.userIdLabel}>User ID:</Text>
           <Pressable
             onPress={() => {
-              Clipboard.setStringAsync(address);
+              Clipboard.setStringAsync(account_address);
               if (Platform.OS === "android") {
                 ToastAndroid.show("Address copied!", ToastAndroid.SHORT);
               } else {
@@ -694,7 +696,7 @@ const UserProfile = () => {
               numberOfLines={1}
               ellipsizeMode="middle"
             >
-              {address}
+              {account_address}
             </Text>
           </Pressable>
         </View>
@@ -820,10 +822,10 @@ const UserProfile = () => {
           <View style={styles.actionButtons}>
             <TouchableOpacity
               style={styles.followButton}
-              onPress={() => setModalVisible(true)}
+              onPress={() => router.push("/")}
             >
               <UserPlus size={18} color={"#ffffff"} />
-              <Text style={styles.followButtonText}>Update Account</Text>
+              <Text style={styles.followButtonText}>Go Home</Text>
             </TouchableOpacity>
 
             <Modal visible={modalVisible} animationType="slide">
@@ -853,15 +855,6 @@ const UserProfile = () => {
             onPress={fetchAccountReels}
           />
         </View>
-
-        <ConfirmPostModal
-          gasFee={estimateFee}
-          platformFee={platformFee}
-          message=""
-          onCancel={() => setClaimReelModalOpen(false)}
-          onConfirm={handleClaimReelPoints}
-          visible={claimReelModalOpen}
-        />
 
         {/* Tab Content */}
         {activeTab === "profile" && renderProfileContent()}

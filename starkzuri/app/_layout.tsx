@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
-import { Stack, Slot, useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { AppProvider } from "@/providers/AppProvider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { View, ActivityIndicator } from "react-native";
+import { Stack, useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
 import Toast from "react-native-toast-message";
 
 export default function RootLayout() {
@@ -47,8 +47,13 @@ export default function RootLayout() {
           name="modals/single_post"
           options={{ presentation: "modal" }}
         />
+        <Stack.Screen name="modals/users" options={{ presentation: "modal" }} />
         <Stack.Screen
           name="modals/single_reel"
+          options={{ presentation: "modal" }}
+        />
+        <Stack.Screen
+          name="modals/referral"
           options={{ presentation: "modal" }}
         />
         <Stack.Screen
