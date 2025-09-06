@@ -1,6 +1,6 @@
 import RedemptionModal from "@/components/RedemptionModal";
 import { useAppContext } from "@/providers/AppProvider";
-import { bigintToShortStr } from "@/utils/AppUtils";
+import { bigintToShortStr, timeAgo } from "@/utils/AppUtils";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -304,11 +304,11 @@ const StarkzuriReferralPage = () => {
 
   const getStatusInfo = (status) => {
     switch (status) {
-      case 0:
+      case "0":
         return { text: "Pending", color: "#f59e0b", icon: "⏳" };
-      case 1:
+      case "1":
         return { text: "Approved", color: "#3b82f6", icon: "✅" };
-      case 2:
+      case "2":
         return { text: "Paid", color: "#22c55e", icon: "💰" };
       default:
         return { text: "Unknown", color: "#6b7280", icon: "❓" };
@@ -407,7 +407,12 @@ const StarkzuriReferralPage = () => {
 
   const RedemptionCard = ({ item, index }) => {
     // console.log(bigintToShortStr(item.mode_of_payment));
-    const statusInfo = getStatusInfo(bigintToShortStr(item.redemption_status));
+    const statusInfo = getStatusInfo(
+      bigintToShortStr(item.redemption_status.toString())
+    );
+
+    console.log(timeAgo(item.timestamp.toString() * 1000));
+
     const paymentInfo = getPaymentModeInfo(
       bigintToShortStr(item.mode_of_payment)
     );
@@ -476,7 +481,7 @@ const StarkzuriReferralPage = () => {
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Date</Text>
               <Text style={styles.detailText}>
-                {/* {formatDate(item.timestamp)} */}
+                {formatDate(item.timestamp.toString())}
               </Text>
             </View>
           </View>
@@ -570,13 +575,15 @@ const StarkzuriReferralPage = () => {
 
               <View style={styles.statsRow}>
                 <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{referralData.length}</Text>
+                  <Text style={styles.statValue}>
+                    {userReferralData?.length}
+                  </Text>
                   <Text style={styles.statLabel}>Total Referrals</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{verifiedReferrals}</Text>
-                  <Text style={styles.statLabel}>Verified</Text>
+                  <Text style={styles.statValue}>{redemptionData?.length}</Text>
+                  <Text style={styles.statLabel}>redemptions</Text>
                 </View>
               </View>
 

@@ -1,8 +1,8 @@
-// export const CONTRACT_ADDRESS =
-//   "0x7c2109cfa8c36fa10c6baac19b234679606cba00eb6697a052b73b869850673";
-
 export const CONTRACT_ADDRESS =
-  "0x04a89f67702897d023b253065732eb6c40ee64bb2c4cb2cce97871ca41a93940";
+  "0x7c2109cfa8c36fa10c6baac19b234679606cba00eb6697a052b73b869850673";
+
+// export const CONTRACT_ADDRESS =
+//   "0x07fc515d3395cf2ceb6f9862766da338cf351a277bc616408c6e82572a87dfea";
 export const ABI = [
   {
     type: "impl",
@@ -419,7 +419,7 @@ export const ABI = [
       },
       {
         name: "redemption_status",
-        type: "core::felt252",
+        type: "core::integer::u32",
       },
       {
         name: "redemption_amount",
@@ -431,7 +431,7 @@ export const ABI = [
       },
       {
         name: "payment_address",
-        type: "core::felt252",
+        type: "core::byte_array::ByteArray",
       },
       {
         name: "contact_type",
@@ -439,7 +439,11 @@ export const ABI = [
       },
       {
         name: "contact_value",
-        type: "core::felt252",
+        type: "core::byte_array::ByteArray",
+      },
+      {
+        name: "timestamp",
+        type: "core::integer::u64",
       },
     ],
   },
@@ -1058,7 +1062,7 @@ export const ABI = [
           },
           {
             name: "payment_address",
-            type: "core::felt252",
+            type: "core::byte_array::ByteArray",
           },
           {
             name: "contact_type",
@@ -1066,7 +1070,7 @@ export const ABI = [
           },
           {
             name: "contact",
-            type: "core::felt252",
+            type: "core::byte_array::ByteArray",
           },
         ],
         outputs: [],
@@ -1082,7 +1086,7 @@ export const ABI = [
           },
           {
             name: "new_status",
-            type: "core::felt252",
+            type: "core::integer::u32",
           },
         ],
         outputs: [],
@@ -1143,6 +1147,13 @@ export const ABI = [
           },
         ],
         state_mutability: "view",
+      },
+      {
+        type: "function",
+        name: "add_user_names",
+        inputs: [],
+        outputs: [],
+        state_mutability: "external",
       },
     ],
   },
@@ -1224,7 +1235,7 @@ export const ABI = [
       },
       {
         name: "status",
-        type: "core::felt252",
+        type: "core::integer::u32",
         kind: "data",
       },
     ],
