@@ -7,7 +7,7 @@ const { PUBLIC_CHAIN_ID, ARGENT_WEBWALLET_URL } =
 export const NODE_URL =
   PUBLIC_CHAIN_ID === constants.NetworkName.SN_MAIN
     ? "https://starknet-mainnet.public.blastapi.io"
-    : "https://l18bcbf953a43cbcd/rpc/v0_8";
+    : "https://lively-greatest-yard.strk-sepolia.quiknode.pro/89fd5a884f057160319ddc9618bcbf953a43cbcd/rpc/v0_8";
 
 export const STARKNET_CHAIN_ID =
   PUBLIC_CHAIN_ID === constants.NetworkName.SN_MAIN
