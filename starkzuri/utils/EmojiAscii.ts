@@ -433,6 +433,7 @@ export const emojiMap: Record<string, string> = {
   "🏇": ":horse_racing:",
   "🧘": ":yoga:",
   "🏄": ":surf:",
+  "🚀": ":rocket:",
   "🏊": ":swim:",
   "🚴": ":bike:",
   "🚵": ":mountain_bike:",
@@ -801,6 +802,7 @@ export const asciiToEmojiMap: Record<string, string> = {
   "<gift>": "💝",
   "<revolve>": "💞",
   "<deco>": "💟",
+  ":rocket:": "🚀",
 
   // Gestures & Body Parts
   ":thumbs_up:": "👍",
